@@ -80,6 +80,26 @@ class indi(object):
 	def mitosis(cls,ind):
 		return cls(ind._genes)
 
+	def getall(self):
+		OUT=[]
+		for g in self._genes:
+			OUT.append(g.get())
+		return OUT
+
+	def findGene(self,genename):
+		pos=-1
+		for g in range(len(self._genes)):
+			if self._genes[g]._name == genename:
+				pos=g
+				break
+		return pos
+	
+	def getGene(self,genename):
+		return self._genes[self.findGene(genename)].get()
+	
+	def hash(self):
+		return hashlib.md5(";".join(str(self.getall())).encode('utf-8')).hexdigest()[0:6]
+
 	def mutateAll(self):
 		for g in self._genes:
 			g.mutate()
@@ -95,14 +115,6 @@ class indi(object):
 			cnt+=1
 		self._name = self.hash()
 
-	def getall(self):
-		OUT=[]
-		for g in self._genes:
-			OUT.append(g.get())
-		return OUT
-		
-	def hash(self):
-		return hashlib.md5(";".join(str(self.getall())).encode('utf-8')).hexdigest()[0:6]
 
 	def __str__(self):
 		OUT="I'm "+self._name+"! Fitness: " + str(self._fitness) +  "\n "
@@ -117,9 +129,6 @@ class GEN(object):
 		for i in indis:
 			self._indis.append(copy.deepcopy(i))
 
-	def levelUp(self):
-		self._num += 1
-
 	@classmethod
 	def clone(cls,proto,N):
 		folk = []
@@ -127,6 +136,18 @@ class GEN(object):
 			folk.append(indi.mitosis(proto))
 		return cls(folk)
 
+	def getWinner(self):
+		return self._indis[0]
+
+	def getFitSumN(self,N):
+		return sum([i._fitness for i in self._indis[:N]])
+
+	def getFitSum(self):
+		return self.getFitSumN(self.getNindis())
+	
+	def getNindis(self):
+		return len(self._indis)
+	
 	def __str__(self):
 		OUT="GEN Nr."+str(self._num)+ " , Fitnesses(hash): "
 		", ".join([str(i._fitness) for i in self._indis]) +'\n'
@@ -135,6 +156,11 @@ class GEN(object):
 		#for i in self._indis:
 			#OUT += str(i)
 		return OUT
+
+	"Changing Methods"
+
+	def levelUp(self):
+		self._num += 1
 
 	def mutateAll(self):
 		for i in self._indis:
@@ -179,7 +205,7 @@ class GEN(object):
 		#self._num += 1
 
 	def crossover(self):
-		for g in range(len(self._indis[0]._genes)):
+		for g in range(len(self.getWinner()._genes)):
 			genpool=[[ind._genes[g]._val] for ind in self._indis]
 			random.shuffle(genpool)
 			for ind in range(len(self._indis)):
@@ -190,16 +216,13 @@ class GEN(object):
 		for i in self._indis:
 			GEN.evalFit(i)
 	
-	def getFitSum(self,N):
-		return sum([i._fitness for i in self._indis[:N]])
-	
 	def sortFittest(self):
 		winners     = zip(  [i._fitness for i in self._indis]  ,  self._indis  )
 		self._indis = list(reversed(zip(*sorted( winners ))[1]))
 
 	def reproNFittest(self,N):
 		cntInidis = len(self._indis)
-		fitSumN   = self.getFitSum(N)
+		fitSumN   = self.getFitSumN(N)
 		#print fitSumN
 		offspringN = []
 		for i in self._indis[:N]:
@@ -354,7 +377,7 @@ def test_GEN():
 	Gen0.mutateAll()
 	Gen0.evalFitAll()
 	print Gen0
-	print Gen0.getFitSum(len(Gen0._indis))
+	print Gen0.getFitSum()
 	Gen0.sortFittest()
 	print Gen0
 
