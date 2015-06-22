@@ -2,7 +2,9 @@
 import genetic
 import os
 import pickle
+import gzip
 import numpy as np
+
 
 def gaussian(x, mu, sig):
     return np.exp(-np.power((x - mu)/sig, 2.) / 2.)
@@ -12,17 +14,17 @@ class GENBeam(genetic.GEN):
 	def evalFit(ind):		
 	#Date Scan Chunk Stat PEnergy PowOpt Pow Mat TarDiam TarLen TarDist Cur1 Cur2 TunRad TunLen PosFoc BinN BinMin BinMax Fitness
 		fit = 1.
-		fit *= gaussian(ind.getall()[0],25,5)  #En
-		fit *= gaussian(ind.getall()[1],5,1)  #Pow
+		fit *= gaussian(ind.getall()[0],25.,5.)  #En
+		fit *= gaussian(ind.getall()[1],5.,1.)  #Pow
 		fit *= dict(zip(("myGraphite","myBeryllium","Water","quartz","Tungsten"),[0.1,0.99,0.1,0.2,0.01]))[ind.getall()[2]]    #Mat		
-		fit *= gaussian(ind.getall()[3],4,0.5)  #TarDia
-		fit *= gaussian(ind.getall()[4],80,10)  #TarLen
-		fit *= gaussian(ind.getall()[5],14043,3)  #TarPos
-		fit *= gaussian(ind.getall()[6],225,30)  #I1
-		fit *= gaussian(ind.getall()[7],225,30)  #I2
-		fit *= gaussian(ind.getall()[8],200,50)  #TunRad
-		fit *= gaussian(ind.getall()[9],300,100)  #TunLen
-		fit *= gaussian(ind.getall()[10],5,1)  #PosFocT
+		fit *= gaussian(ind.getall()[3],4.,0.5)  #TarDia
+		fit *= gaussian(ind.getall()[4],80.,10.)  #TarLen
+		fit *= gaussian(ind.getall()[5],14043.,3.)  #TarPos
+		fit *= gaussian(ind.getall()[6],225.,30.)  #I1
+		fit *= gaussian(ind.getall()[7],225.,30.)  #I2
+		fit *= gaussian(ind.getall()[8],200.,50.)  #TunRad
+		fit *= gaussian(ind.getall()[9],300.,100.)  #TunLen
+		fit *= gaussian(ind.getall()[10],5.,1.)  #PosFocT
 		ind._fitness = fit
 
 	def evalFitAll(self):
@@ -52,16 +54,6 @@ def writeToOrderList(date, filename, ind):
 		indistr += str(ind._fitness)+'\n'
 		myfile.write(indistr)
 
-def main():
-	#pass
-	initBeam("./evol1/")
-	NGEN=500
-	for G in range(0,NGEN):
-		iterateBeam("./evol1",G)
-	Gen0 = pickle.load( open( "evol1/Gen"+str(NGEN)+".pkl", "rb" ) )
-	print Gen0
-		
-
 def getBeam():
 	beam = []
 	#Date Scan Chunk Stat PEnergy PowOpt Pow Mat TarDiam TarLen TarDist Cur1 Cur2 TunRad TunLen PosFoc BinN BinMin BinMax Fitness
@@ -79,6 +71,79 @@ def getBeam():
 	return beam
 
 
+def main():
+	""" Main Program """
+	#pass
+	#EVOL()
+	statEvol()
+
+def statEvol():
+	gens=[]
+	winnerFitnesses=[]
+	meanFitnesses=[]
+	winnerEnergy=[]
+	
+	### collect data
+	import glob
+	path = "./evol1/*.pkl"
+	for fname in glob.glob(path):
+		print(fname)
+		Gen0 = pickle.load( open( fname, "rb" ) )
+		gens.append(Gen0._num)
+		winnerFitnesses.append(Gen0.getWinner()._fitness)
+		winnerEnergy.append(Gen0.getWinner().getGene("PEnergy"))
+		meanFitnesses.append(Gen0.getFitSum()/Gen0.getNindis())
+	print gens, winnerFitnesses
+	[gens, winnerFitnesses] = zip(*sorted(zip(gens, winnerFitnesses)))
+	print gens, winnerFitnesses
+	
+	
+	### ROOT Plotting
+	import ROOT as rt
+	from array import array
+	rt.gROOT.SetBatch(1)
+	canv = rt.TCanvas('c1','',0,0,700,400)
+	arr_x = array("d", gens)
+	arr_y = array("d", winnerFitnesses)
+	#arr_xerr = array("d", RunNrsErr)
+	#arr_yerr = array("d", RatesErr)
+	#print arr_x, arr_y, len(arr_x), len(arr_y)
+	#tgraph = rt.TGraphErrors(len(arr_x),arr_x,arr_y,arr_xerr,arr_yerr)
+	tgraph = rt.TGraph(len(arr_x),arr_x,arr_y)
+	tgraph.SetTitle("Evolution of the fittest;Generation #;fitness")
+	tgraph.Draw("A*")
+	#arDef = rt.TArrow(ThreshEff[1],200,ThreshEff[1],250,0.02,"|>")
+	#arDef.SetAngle(15)
+	#arDef.SetLineWidth(2)
+	#arDef.Draw()
+	canv.SaveAs("./evol1/plot_BestFitness.png")
+
+	arr_x = array("d", gens)
+	arr_y = array("d", winnerEnergy)
+	tgraph = rt.TGraph(len(arr_x),arr_x,arr_y)
+	tgraph.SetTitle("Evolution of the fittest Energy;Generation #;Energy in MeV")
+	tgraph.Draw("A*")
+	canv.SaveAs("./evol1/plot_BestFitness_E.png")
+
+	arr_x = array("d", gens)
+	arr_y = array("d", meanFitnesses)
+	tgraph = rt.TGraph(len(arr_x),arr_x,arr_y)
+	tgraph.SetTitle("Evolution of the mean fitness;Generation #;fitness")
+	tgraph.Draw("A*")
+	canv.SaveAs("./evol1/plot_MeanFitness.png")
+
+
+
+def EVOL():
+	pathevo="./evol1/"
+	initBeam(pathevo)
+	NGEN=500
+	for G in range(0,NGEN):
+		iterateBeam(pathevo,G)
+	Gen0 = pickle.load( open( pathevo+"/Gen"+str(NGEN)+".pkl", "rb" ) )
+	print Gen0
+		
+
 def initBeam(evolpath):
 	if not os.path.exists(evolpath):
 		os.makedirs(evolpath)
@@ -94,13 +159,13 @@ def initBeam(evolpath):
 	for ind in Gen0._indis:
 		writeToOrderList("2106", evolpath+"/Beams.reg", ind)
 		
-	print Gen0
+	print Gen0	
 	pickle.dump( Gen0, open( evolpath+"/Gen0.pkl", "wb" ) )
 
 def iterateBeam(evolpath,g):
 	Gen0 = pickle.load( open( evolpath+"/Gen"+str(g)+".pkl", "rb" ) )	
-	print "**** GEREATION: ",Gen0._num
-	print "**********************"
+	print "**** GEREATION: ",Gen0._num ,"*********"
+	print "**********************************"
 	print 
 	print "Selection, Reproduction"
 	print 
