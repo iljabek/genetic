@@ -138,6 +138,9 @@ class GEN(object):
 
 	def getWinner(self):
 		return self._indis[0]
+	
+	def getFitness(self):
+		return [i._fitness for i in self._indis]
 
 	def getFitSumN(self,N):
 		return sum([i._fitness for i in self._indis[:N]])
@@ -147,6 +150,11 @@ class GEN(object):
 	
 	def getNindis(self):
 		return len(self._indis)
+	
+	def printFitness(self,N):
+		print " Fitness dispositions: ",[ ind._fitness for ind in self._indis[:N]]
+		#print cntInidis, offspringN, sum(offspringN)
+
 	
 	def __str__(self):
 		OUT="GEN Nr."+str(self._num)+ " , Fitnesses(hash): "
@@ -242,8 +250,8 @@ class GEN(object):
 			for c in range( N,N-(sum(offspringN)-cntInidis),-1 ):
 				#print c
 				offspringN[c%len(offspringN)] -= 1
-		print " Fitness dispositions: ",[ ind._fitness for ind in self._indis[:N]], 
-		print cntInidis, offspringN, sum(offspringN)
+		#print " Fitness dispositions: ",[ ind._fitness for ind in self._indis[:N]], 
+		print offspringN, sum(offspringN)
 		offspringN = [x-1 for x in offspringN if x > 0]
 		Nactual = cntInidis - sum(offspringN)
 		looser=Nactual
