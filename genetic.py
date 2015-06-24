@@ -272,14 +272,14 @@ class GEN(object):
 	def crossover(self):
 		for g in range(len(self.getWinner()._genes)):
 			genpool=[[ind._genes[g]._val] for ind in self._indis]
-			#print "  Uniqe "+ind._genes[g]._name+": ",len(list(set([ind._genes[g]._val for ind in self._indis])))
+			#print "  Unique "+ind._genes[g]._name+": ",len(list(set([ind._genes[g]._val for ind in self._indis])))
 			random.shuffle(genpool)
 			random.shuffle(genpool)
 			#print genpool
 			for ind in range(len(self._indis)):
 				self._indis[ind]._genes[g].set(genpool[ind][0])
 
-			#print "  Uniqe Individuals: ", len(list(set(self.getHashes())))
+			#print "  Unique Individuals: ", len(list(set(self.getHashes())))
 
 		#self._num += 1
 	

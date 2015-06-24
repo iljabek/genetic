@@ -83,7 +83,7 @@ def main():
 	""" Main Program """
 	#pass
 	evolpath="./evol8/"
-	#def EVOL(pathevo, NGEN, GenSize, fitSumShare,NMax, mutants, mutGens,keepW):
+	#def EVOL(pathevo, NGEN, GenSize, fitMax, *args):
 	#EVOL(evolpath,100,100,0.5,50,3,0)
 	#EVOL(evolpath,100,100,0.5,50,1,1)
 	#EVOL(evolpath,100,100,0.5,50,2,0)
@@ -92,16 +92,23 @@ def main():
 	#EVOL(evolpath,*args)
 	
 	evolpath="./trialA"
-	args = (100,100,0.5,5,50,2,0)
+	args = (300,100,0.95,  0.5,5,50,2,0)
 	print args
-	open(evolpath+"/params.txt","a").write("NGEN GenSize fitSumShare NMax mutants mutGens keepW \n")
-	open(evolpath+"/params.txt","a").write("Parameters: "+" ".join(map(str,args))+"\n")
-	trials=[0]*10
-	for t in range(len(trials)):
+	open(evolpath+"/params.txt","a").write("#NGEN GenSize fitSumShare NMax mutants mutGens keepW \n")
+	open(evolpath+"/params.txt","a").write("#Parameters: "+" ".join(map(str,args))+"\n")
+	open(evolpath+"/params.txt","a").write("#Fittest evolution: "+"\n")
+	trials=[0]*100
+	try: # until CTRL-C or NMaxGenerations
+		for t in range(len(trials)):
+			pass
+			trials[t] = EVOL(evolpath,*args)[:]
+			open(evolpath+"/params.txt","a").write(" ".join(map(str,trials[t]))+"\n")
+	except KeyboardInterrupt:
 		pass
-		trials[t]=EVOL(evolpath,*args)
+
 	print trials
-	open(evolpath+"/params.txt","a").write("Fittest after 100GEN: "+" ".join(map(str,trials))+"\n")
+	#for l in trials:
+		#open(evolpath+"/params.txt","a").write(" ".join(map(str,l))+"\n")
 	#statEvol(evolpath)
 
 
@@ -216,22 +223,27 @@ def statEvol(evolpath):
 	canv.SaveAs(evolpath+"/plot_MeanFitness.png")
 
 
-def EVOL(pathevo, NGEN, GenSize, *args):
+def EVOL(pathevo, NGEN, GenSize, maxFit, *args):
 	"EVOLUTION Procedure"
 	
 	Gen0 = initBeam(pathevo,GenSize) ### Init Generation, return GEN and Write both 
-
+	genFits = []
+	f=0.
 	try: # until CTRL-C or NMaxGenerations
 		for G in range(0,NGEN):
-			#iterateBeamAndIO(  pathevo, *args) ### Iterate Generation With Write/Read (slower)
-			iterateBeam(        Gen0,    *args) ### Iterate Generation in RAM
+			#iterateBeamAndIO( pathevo, *args) ### Iterate Generation With Write/Read (slower)
+			f=iterateBeam( Gen0, *args) ### Iterate Generation in RAM
+			genFits.append(f)
+			if f>maxFit:
+				break
 	except KeyboardInterrupt:
 		pass
-		
+	
 	print Gen0.getWinner()
+	print f
 	#statEvol(pathevo)
 
-	return Gen0.getWinner()._fitness,Gen0.getWinner().hash() 
+	return genFits 
 	
 
 def initBeam(evolpath,GenSize=100):
@@ -279,7 +291,7 @@ def iterateBeam(Gen0, *args):
 	print "**** GENERATION: ",Gen0._num ,"*********"
 	print "**********************************"
 	hashes = Gen0.getHashes()
-	print "  Uniqe Individuals: ", len(list(set(hashes))), " Uniqe Genes: ", Gen0.getUniqueGenes()
+	print "  Unique Individuals: ", len(list(set(hashes))), " Unique Genes: ", Gen0.getUniqueGenes()
 
 	print " Selection, Reproduction"
 	fs = Gen0.getFitness()
@@ -294,14 +306,14 @@ def iterateBeam(Gen0, *args):
 	print "  ",N, " individuals combining ", sum(fs[N:])/sum(fs)*100.,"% of the total fitness"
 	Gen0.reproNFittest(N)
 	hashes = Gen0.getHashes()
-	print "  Uniqe Individuals: ", len(list(set(hashes))), " Uniqe Genes: ", Gen0.getUniqueGenes()
+	print "  Unique Individuals: ", len(list(set(hashes))), " Unique Genes: ", Gen0.getUniqueGenes()
 
 
 	if len(list(set(hashes))) < len(hashes): 
 		print " Crossover, if not all the same"
 		Gen0.crossover()
 		hashes = Gen0.getHashes()
-		print "  Uniqe Individuals: ", len(list(set(hashes))), " Uniqe Genes: ", Gen0.getUniqueGenes()
+		print "  Unique Individuals: ", len(list(set(hashes))), " Unique Genes: ", Gen0.getUniqueGenes()
 	#mutants = 50 ###
 	#mutGens = 3 ###
 
@@ -311,7 +323,7 @@ def iterateBeam(Gen0, *args):
 	#Gen0.mutateRandomKbyN(mutants,mutGens,keepW)
 	Gen0.mutateSameOrRandomKbyNProtectW(mutants,mutGens,keepW)
 	hashes = Gen0.getHashes()
-	print "  Uniqe Individuals: ", len(list(set(hashes))), " Uniqe Genes: ", Gen0.getUniqueGenes()
+	print "  Unique Individuals: ", len(list(set(hashes))), " Unique Genes: ", Gen0.getUniqueGenes()
 
 	print " Evaluate, sort"
 	Gen0.evalFitAll()
@@ -324,6 +336,7 @@ def iterateBeam(Gen0, *args):
 	Gen0.printFitness(10)
 	
 	print 
+	return Gen0.getWinner()._fitness 
 		
 	
 
