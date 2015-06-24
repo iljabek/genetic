@@ -10,6 +10,7 @@ def main():
 	pass
 	#test_gene()
 	#test_indi()
+	#test_IO()
 	test_world()
 
 class gene(object):
@@ -41,23 +42,27 @@ class gene(object):
 			self._val = random.choice(self._tupl)
 		elif self._typ == 1:
 			#self._val = self._tupl[random.randrange(0, len(self._tupl))]
-			self._val = gene.randrange_float(self._tupl[0],self._tupl[1],self._tupl[2])
-			#self._val = int((self._val * 10000) + 0.5) / 10000.0
+			#self._val = gene.randrange_float(self._tupl[0],self._tupl[1],self._tupl[2])
+			self._val = gene.randrange_float(*self._tupl)
+			#truncate long floats?
 		else:
-			self._val = random.uniform(self._tupl[0],self._tupl[1])
+			#self._val = random.uniform(self._tupl[0],self._tupl[1])
+			self._val = random.uniform(*self._tupl[:2])
 	
 	def set(self,val):
 		if self._typ == 0:
 			if val in self._tupl:
 				self._val = val
-			else:
-				self._val = self._tupl[int(val)%len(self._tupl)]
-		elif self._typ == 1: 
-			if val in numpy.arange(self._tupl[0],self._tupl[1],self._tupl[2]).tolist():
-				self._val = val
+			else: print "  Gen SET ERROR"
+				#self._val = self._tupl[int(val)%len(self._tupl)]
+		#elif self._typ == 1: 
+			#if val in numpy.arange(self._tupl[0],self._tupl[1],self._tupl[2]).tolist():
+				#self._val = val
+			#else: print "  Gen SET ERROR"
 		else:
 			if self._tupl[0]<=val and val<=self._tupl[1]:
 				self._val = val
+			else: print "  Gen SET ERROR"
 
 	def get(self):
 		return self._val
@@ -126,6 +131,7 @@ class GEN(object):
 	def __init__(self,indis):
 		self._num = 0
 		self._indis = []
+		self._memory = {}
 		for i in indis:
 			self._indis.append(copy.deepcopy(i))
 
@@ -151,8 +157,18 @@ class GEN(object):
 	def getNindis(self):
 		return len(self._indis)
 	
+	def getHashes(self):
+		return [a.hash() for a in self._indis]
+	
+	def getUniqueGenes(self):
+		u=[]
+		for g in range(len(self.getWinner()._genes)):
+			u.append(len(list(set([ind._genes[g]._val for ind in self._indis]))))
+		return u
+
+	
 	def printFitness(self,N):
-		print " Fitness dispositions: ",[ ind._fitness for ind in self._indis[:N]]
+		print " Fitness dispositions: ",[ '{:.3g}'.format(ind._fitness) for ind in self._indis[:N]], " Sum:", sum([ ind._fitness for ind in self._indis[:N]])
 		#print cntInidis, offspringN, sum(offspringN)
 
 	
@@ -197,9 +213,11 @@ class GEN(object):
 				i.mutateAll()
 		#self._num += 1
 
-	def mutateRandomKbyN(self,K,N):
-		mutants=[ random.randint(0,len(self._indis)-1) for pick in range(K) ]
-		print " to be mutated: ", mutants
+	def mutateRandomKbyN(self,K,N,W):
+		"Select K random individuals and Mutate by N genes"
+		WToKeep = W % len(self._indis)
+		mutants=[ random.randint(WToKeep,len(self._indis)-1) for pick in range(K) ]
+		#print " to be mutated: ", mutants
 		for ind in mutants:
 			i = self._indis[ind]
 			#print i
@@ -212,21 +230,90 @@ class GEN(object):
 				i.mutateAll()
 		#self._num += 1
 
+	def mutateSameOrRandomKbyNProtectW(self,K,N,W):
+		WToKeep = W % len(self._indis)
+		mutants=[]
+		allHashes=self.getHashes()
+		#get indeces which have earlier accurances
+		#print allHashes 
+		for i in range(len(allHashes)-1):
+			if not i in mutants:
+				#print "searching ",i, " ,Sum= ", len(mutants) , " from K= ", K
+				j=i+1
+				while allHashes[i] in allHashes[j:]:
+					#print "   looking at ",j, "at ", allHashes.index(allHashes[i],j),
+					j = allHashes.index(allHashes[i],j)
+					#print " found ",allHashes[i], " at ",j, " total ", len(mutants)
+					mutants.append(j)
+					j+=1
+					#print "   to check", allHashes[j:]
+					#if len(mutants)>=K:
+						#break
+				#if len(mutants)>=K:
+					#break
+		print " to be mutated because same: ", len(mutants)
+		if len(mutants)>=K:
+			"0.. = mutate winner, 1.. = keep winner"
+			mutants += [ random.randint(WToKeep,len(self._indis)-1) for pick in range(K-len(mutants)) ]
+		print " to be mutated all: ", len(mutants)
+		for ind in mutants:
+			i = self._indis[ind]
+			#print i
+			i.mutate(N)
+			#hashes = [a.hash() for a in self._indis]
+			#for tries in range(3):
+				#if i.hash() in hashes:
+					#i.mutate(N)
+			#if i.hash() in hashes:
+				#i.mutateAll()
+		#self._num += 1
+		#print self.getHashes()
+
 	def crossover(self):
 		for g in range(len(self.getWinner()._genes)):
 			genpool=[[ind._genes[g]._val] for ind in self._indis]
+			#print "  Uniqe "+ind._genes[g]._name+": ",len(list(set([ind._genes[g]._val for ind in self._indis])))
 			random.shuffle(genpool)
+			random.shuffle(genpool)
+			#print genpool
 			for ind in range(len(self._indis)):
 				self._indis[ind]._genes[g].set(genpool[ind][0])
-		#self._num += 1
 
+			#print "  Uniqe Individuals: ", len(list(set(self.getHashes())))
+
+		#self._num += 1
+	
 	def evalFitAll(self):
 		for i in self._indis:
-			GEN.evalFit(i)
+			#GEN.evalFit(i)
+			self.evalFit(i)
 	
 	def sortFittest(self):
 		winners     = zip(  [i._fitness for i in self._indis]  ,  self._indis  )
 		self._indis = list(reversed(zip(*sorted( winners ))[1]))
+
+	def fillMemory(self,ind):
+		h=ind.hash()
+		if not h in self._memory:
+			self._memory[h] = ind._fitness
+		#else:
+			#pass
+			#print "  * found "+h+" in the GenMem!"
+
+	def updateMemory(self):
+		for i in self._indis:
+			h=i.hash()
+			if not h in self._memory:
+				self._memory[h] = i._fitness
+			#else:
+				#print "  * found "+h+" in the GenMem!"
+
+	def getMemory(self,ind):
+		h=ind.hash()
+		if not h in self._memory:
+			return -1
+		else:
+			return self._memory[h]
 
 	def reproNFittest(self,N):
 		cntInidis = len(self._indis)
@@ -234,17 +321,17 @@ class GEN(object):
 		#print fitSumN
 		offspringN = []
 		for i in self._indis[:N]:
-			"calculate portion of children normed to fitness sum, at least one"
+			#"calculate portion of children normed to fitness sum, at least one"
 			NoOfWinner = max(1, int(1.*cntInidis*(i._fitness/fitSumN)))
 			#print int(1.*cntInidis*(i._fitness/fitSumN)), cntInidis, (i._fitness/fitSumN) 
 			offspringN.append(NoOfWinner)
 		#print cntInidis, offspringN, sum(offspringN)
-		"append if list too short, i.e. there are too few"
+		#"append if list too short, i.e. there are too few"
 		if sum(offspringN) < cntInidis :
 			for c in range( cntInidis-sum(offspringN) ):
 				offspringN[c%len(offspringN)] += 1
 		#print cntInidis, offspringN, sum(offspringN)
-		"reduce if list too long, i.e. there are too many"
+		#"reduce if list too long, i.e. there are too many"
 		if sum(offspringN) > cntInidis :
 			#print range( N,N-(sum(offspringN)-cntInidis),-1 )
 			for c in range( N,N-(sum(offspringN)-cntInidis),-1 ):
@@ -264,11 +351,91 @@ class GEN(object):
 		#self._num += 1
 				
 	
-	@classmethod
-	def evalFit(cls,ind):
-		fit = ind.getall()[2] + ind.getall()[4]*ind.getall()[0]
+	def evalFit(self,ind):
+		print "overload me!"
+		fit = sum(ind.getall()[:5])
 		ind._fitness = fit
+
 	
+def writeStateToFile(Gen, path,joined=True,gziped=True):
+	import pickle
+	import gzip
+	import os
+	
+	fullpath=""
+	if joined:
+		fullpath = path+"/GenAll.pkl"
+	else:
+		num = '{0:04d}'.format(Gen._num)
+		fullpath = path+"/GenN"+num+".pkl"
+	
+	if gziped:
+		fullpath += ".gz"
+	
+	if joined and os.path.isfile(fullpath):
+		#"Write to the beginning of the .pkl file if not first, gzip if needed"
+		#"use temporary file, append the old"
+
+		if gziped:
+			f = gzip.open(fullpath,"rb")
+			newf = gzip.open("./Gen____.tmp", "wb")
+		else:
+			f = open(fullpath,"rb")
+			newf = open("./Gen____.tmp", "wb")
+		pickle.dump( Gen , newf )
+		for chunk in iter(lambda: f.read(1024), b""):
+			newf.write(chunk)
+		newf.close()
+		f.close()
+		os.remove(fullpath)
+		os.rename("./Gen____.tmp",fullpath)
+	else:
+		#"if not joined or first joined file"
+		if gziped:
+			f = gzip.open(fullpath,"wb")
+		else:
+			f = open(fullpath,"wb")
+		pickle.dump( Gen , f )
+		f.close()
+				
+	#pickle.dump( Gen0, open( evolpath+"/Gen0.pkl", "wb" ) )
+	#pickle.dump( Gen0, open( evolpath+"/GenAll.pkl", "wb" ) )
+	#pickle.dump( Gen, gzip.open( evolpath+"/GenAll.pkl.gz", "wb" ) )
+
+def readStateFromFile(path,joined=True,gziped=True,N=0):
+	import glob
+	import pickle
+	import gzip
+	import os
+	
+	fullpath=""
+	
+	if joined:
+		fullpath = path+"/GenAll.pkl"
+		if gziped: 
+			fullpath += ".gz"
+	else:
+		maxGen=0
+		if gziped: 
+			ext=".pkl.gz"
+		else: 
+			ext=".pkl"
+		for fn in glob.glob(path+"/GenN*"+ext):
+			fnGen = int(fn[fn.index("GenN")+len("GenN"):fn.index(".pkl")]) # *GenNXXXX.pkl*
+			if fnGen >= maxGen: 
+				maxGen = fnGen
+				fullpath = fn
+				
+	print fullpath
+	if gziped: 
+		f = gzip.open(fullpath,"rb")
+	else:
+		f = open(fullpath,"rb")
+		
+	GenMax = pickle.load(f)
+	f.close()
+	return GenMax
+
 
 
 def getBeam():
@@ -285,6 +452,66 @@ def getBeam():
 	beam.append( gene("PosFocT", [     1,     9,   1]        ) )
 	beam.append( gene("Mat",     ("myGraphite","myBeryllium","Water","quartz","Tungsten")) )
 	return beam
+
+def test_IO():
+	proto = indi( getBeam())
+	Gen0 = GEN.clone(proto,10)
+	
+	Gen0.mutateAll()
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
+	#print Gen0.getWinner()
+	writeStateToFile(Gen0,"./evol0/",True,True) #joined,gziped
+	Gen0.mutateAll()
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
+	print Gen0.getWinner()
+	writeStateToFile(Gen0,"./evol0/",True,True) #joined,gziped
+	del Gen0
+	Gen0 = 	readStateFromFile("./evol0/",True,True) #joined,gziped
+	print Gen0.getWinner()
+
+	Gen0.mutateAll()
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
+	#print Gen0.getWinner()
+	writeStateToFile(Gen0,"./evol0/",False,True) #joined,gziped
+	Gen0.mutateAll()
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
+	print Gen0.getWinner()
+	writeStateToFile(Gen0,"./evol0/",False,True) #joined,gziped
+	del Gen0
+	Gen0 = 	readStateFromFile("./evol0/",False,True) #joined,gziped
+	print Gen0.getWinner()
+
+	Gen0.mutateAll()
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
+	#print Gen0.getWinner()
+	writeStateToFile(Gen0,"./evol0/",True,False) #joined,gziped
+	Gen0.mutateAll()
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
+	print Gen0.getWinner()
+	writeStateToFile(Gen0,"./evol0/",True,False) #joined,gziped
+	del Gen0
+	Gen0 = 	readStateFromFile("./evol0/",True,False) #joined,gziped
+	print Gen0.getWinner()
+	
+	Gen0.mutateAll()
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
+	#print Gen0.getWinner()
+	writeStateToFile(Gen0,"./evol0/",False,False) #joined,gziped
+	Gen0.mutateAll()
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
+	print Gen0.getWinner()
+	writeStateToFile(Gen0,"./evol0/",False,False) #joined,gziped
+	del Gen0
+	Gen0 = 	readStateFromFile("./evol0/",False,False) #joined,gziped
+	print Gen0.getWinner()
 
 def test_world():
 	proto = indi( getBeam())
@@ -308,7 +535,7 @@ def test_world():
 	print 
 	print "Mutation"
 	print 
-	Gen0.mutateRandomKbyN(5,5)
+	Gen0.mutateRandomKbyN(5,5,0)
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
 	Gen0.levelUp()
@@ -367,7 +594,6 @@ def test_mutation():
 	Gen0.levelUp()
 	print Gen0
 
-
 	#Gen1 = GEN(1,Gen0._indis)
 	#Gen1.mutateAll()
 	#Gen1.evalFitAll()
@@ -388,7 +614,6 @@ def test_GEN():
 	print Gen0.getFitSum()
 	Gen0.sortFittest()
 	print Gen0
-
 	
 def test_indi2():
 	print "*** Test indi, single mutation and mock generation with mutation"
