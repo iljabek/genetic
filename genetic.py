@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+"Genetic Algorithm Homebrew = GAH"
+
 import os,sys
 import math
 import random
@@ -285,7 +287,6 @@ class GEN(object):
 	
 	def evalFitAll(self):
 		for i in self._indis:
-			#GEN.evalFit(i)
 			self.evalFit(i)
 	
 	def sortFittest(self):

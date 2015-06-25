@@ -32,35 +32,6 @@ class GENBeam(genetic.GEN):
 		ind._fitness = fit
 
 
-def writeToOrderList(date, filename, ind):
-	"""
-		Usage
-		for ind in Gen0._indis:
-			writeToOrderList("2206", evolpath+"/Beams.reg", ind)
-	"""
-	#return True # for test only
-	#Date Scan Chunk Stat PEnergy PowOpt Pow Mat TarDiam TarLen TarDist Cur1 Cur2 TunRad TunLen PosFoc BinN BinMin BinMax Fitness
-	indistr=""
-	with open(filename, "a") as myfile:
-		indistr += date + '\t'
-		indistr += ind.hash() +'\t'
-		indistr += "10000" +'\t'
-		indistr += str(ind.getall()[0]) +'\t'
-		indistr += "0" +'\t'
-		indistr += str(ind.getall()[1]) +'\t'
-		indistr += str(ind.getall()[2]) +'\t'
-		indistr += str(ind.getall()[3]) +'\t'
-		indistr += str(ind.getall()[4]) +'\t'
-		indistr += str(ind.getall()[5]) +'\t'
-		indistr += str(ind.getall()[6]) +'\t'
-		indistr += str(ind.getall()[7]) +'\t'
-		indistr += str(ind.getall()[8]) +'\t'
-		indistr += str(ind.getall()[9]) +'\t'
-		indistr += str(ind.getall()[10]) +'\t'
-		indistr += "100\t0.\t10.\t"
-		indistr += str(ind._fitness)+'\n'
-		myfile.write(indistr)
-
 def getBeam():
 	"Genome prototype"
 	beam = []
