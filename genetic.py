@@ -73,11 +73,14 @@ class gene(object):
 		return str(self.get())
 
 class indi(object):
-	def __init__(self,genes):
+	def __init__(self,genes,vals=[]):
 		self._genes   = copy.deepcopy(genes)
 		self._fitness = -1
 		#self._name    = name
 		self._name    = self.hash()
+		if len(vals)>0:
+			for i in range(len(self._genes)):
+				self._genes[i].set(vals[i])
 
 #@classmethod
 #def crossover(cls,name,ind1,ind2):

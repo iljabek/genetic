@@ -12,7 +12,7 @@ class GENBeam(genetic.GEN):
 	#@staticmethod
 	def evalFit(self,ind):
 		prefit = self.getMemory(ind)
-		if prefit > 0: #found individuum in prev. generations!
+		if prefit > 0: #found individual in prev. generations!
 			print "    Know "+ ind._name +" already!"
 			return prefit
 			
