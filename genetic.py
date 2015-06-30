@@ -75,7 +75,7 @@ class gene(object):
 class indi(object):
 	def __init__(self,genes,vals=[]):
 		self._genes   = copy.deepcopy(genes)
-		self._fitness = -1
+		self._fitness = -0.000001
 		#self._name    = name
 		self._name    = self.hash()
 		if len(vals)>0:
@@ -173,7 +173,7 @@ class GEN(object):
 
 	
 	def printFitness(self,N):
-		print " Fitness dispositions: ",[ '{:.3g}'.format(ind._fitness) for ind in self._indis[:N]], " Sum:", sum([ ind._fitness for ind in self._indis[:N]])
+		print " Fitness dispositions: ",[ '{0:.3g}'.format(ind._fitness) for ind in self._indis[:N]], " Sum:", sum([ ind._fitness for ind in self._indis[:N]])
 		#print cntInidis, offspringN, sum(offspringN)
 
 	
@@ -436,7 +436,7 @@ def readStateFromFile(path,joined=True,gziped=True,N=0):
 	else:
 		f = open(fullpath,"rb")
 		
-	GenMax = pickle.load(f)
+	for i in range(N+1): GenMax = pickle.load(f)
 	f.close()
 	return GenMax
 
