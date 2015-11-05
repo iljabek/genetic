@@ -108,7 +108,9 @@ class indi(object):
 		return self._genes[self.findGene(genename)].get()
 	
 	def hash(self):
-		return hashlib.md5(";".join(str(self.getall())).encode('utf-8')).hexdigest()[0:6]
+		#return hashlib.md5(";".join([str(i) for i in self.getall()])).encode('utf-8')).hexdigest()[0:7]
+		#for decimal instead of hex  
+		return "{0:09d}".format(int(hashlib.md5(";".join([str(i) for i in self.getall()])).encode('utf-8')).hexdigest()[0:7],16))
 
 	def mutateAll(self):
 		for g in self._genes:
@@ -257,7 +259,7 @@ class GEN(object):
 				#if len(mutants)>=K:
 					#break
 		print " to be mutated because same: ", len(mutants)
-		if len(mutants)>=K:
+		if len(mutants)<=K:
 			"0.. = mutate winner, 1.. = keep winner"
 			mutants += [ random.randint(WToKeep,len(self._indis)-1) for pick in range(K-len(mutants)) ]
 		print " to be mutated all: ", len(mutants)
@@ -265,28 +267,35 @@ class GEN(object):
 			i = self._indis[ind]
 			#print i
 			i.mutate(N)
-			#hashes = [a.hash() for a in self._indis]
-			#for tries in range(3):
-				#if i.hash() in hashes:
-					#i.mutate(N)
-			#if i.hash() in hashes:
-				#i.mutateAll()
+			hashes = [a.hash() for a in self._indis]
+			for tries in range(3):
+				if i.hash() in hashes:
+					i.mutate(N+tries)
+			if i.hash() in hashes:
+				i.mutateAll()
 		#self._num += 1
 		#print self.getHashes()
 
-	def crossover(self):
+	def crossover(self,W):
+		self.mixCrossover(W)
+
+	def mixCrossover(self,W):
 		for g in range(len(self.getWinner()._genes)):
 			genpool=[[ind._genes[g]._val] for ind in self._indis]
 			#print "  Unique "+ind._genes[g]._name+": ",len(list(set([ind._genes[g]._val for ind in self._indis])))
 			random.shuffle(genpool)
 			random.shuffle(genpool)
 			#print genpool
-			for ind in range(len(self._indis)):
+			for ind in range(W,len(self._indis)):
 				self._indis[ind]._genes[g].set(genpool[ind][0])
 
 			#print "  Unique Individuals: ", len(list(set(self.getHashes())))
 
 		#self._num += 1
+
+	#def pairedCrossover(self):
+		#Npairs = len(self._indis)/2
+		#for pair in range(Npairs): #2*pair, 2*pair+1
 	
 	def evalFitAll(self):
 		for i in self._indis:
@@ -318,6 +327,16 @@ class GEN(object):
 			return -1
 		else:
 			return self._memory[h]
+
+
+	def rankFitness(self,ind, SP):
+		return 2.-SP + 2.*(SP-1)* (ind)/(len(self._indis)-1)
+	
+	def linRepro(self,SP):
+		fitS = [rankFitness(i) for i in range(len(self._indis))]
+		fitSumN = sum(fitS)
+
+
 
 	def reproNFittest(self,N):
 		cntInidis = len(self._indis)
@@ -382,17 +401,17 @@ def writeStateToFile(Gen, path,joined=True,gziped=True):
 
 		if gziped:
 			f = gzip.open(fullpath,"rb")
-			newf = gzip.open("./Gen____.tmp", "wb")
+			newf = gzip.open(path+"/Gen____.tmp", "wb")
 		else:
 			f = open(fullpath,"rb")
-			newf = open("./Gen____.tmp", "wb")
+			newf = open(path+"/Gen____.tmp", "wb")
 		pickle.dump( Gen , newf )
 		for chunk in iter(lambda: f.read(1024), b""):
 			newf.write(chunk)
 		newf.close()
 		f.close()
 		os.remove(fullpath)
-		os.rename("./Gen____.tmp",fullpath)
+		os.rename(path+"/Gen____.tmp",fullpath)
 	else:
 		#"if not joined or first joined file"
 		if gziped:
@@ -531,7 +550,7 @@ def test_world():
 	print 
 	print "Crossover"
 	print 
-	Gen0.crossover()
+	Gen0.crossover(3)
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
 	Gen0.levelUp()

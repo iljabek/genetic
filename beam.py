@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import genetic
 import os
-import numpy as np
-
+import sys
 
 def gaussian(x, mu, sig):
-    return np.exp(-np.power((x - mu)/sig, 2.) / 2.)
+	import numpy as np
+  return np.exp(-np.power((x - mu)/sig, 2.) / 2.)
 
 class GENBeam(genetic.GEN):
 	"Custom Generation Class: overload Fitness evaluation"
@@ -50,10 +50,10 @@ def getBeam():
 	return beam
 
 
-def main():
+def main(argv):
 	""" Main Program """
 	#pass
-	evolpath="./evol8/"
+	evolpath=argv[0]
 	#def EVOL(pathevo, NGEN, GenSize, fitMax, *args):
 	#EVOL(evolpath,100,100,0.5,50,3,0)
 	#EVOL(evolpath,100,100,0.5,50,1,1)
@@ -312,4 +312,4 @@ def iterateBeam(Gen0, *args):
 	
 
 if __name__ == '__main__':
-	main()
+	main(sys.argv[1:])
