@@ -108,9 +108,12 @@ class indi(object):
 		return self._genes[self.findGene(genename)].get()
 	
 	def hash(self):
-		#return hashlib.md5(";".join([str(i) for i in self.getall()])).encode('utf-8')).hexdigest()[0:7]
-		#for decimal instead of hex  
-		return "{0:09d}".format(int(hashlib.md5(";".join([str(i) for i in self.getall()])).encode('utf-8')).hexdigest()[0:7],16))
+		"Hashing using all genes' values, makes inidis uniqe"
+		c = ";".join([str(i) for i in self.getall()])
+		cm = str( hashlib.md5(  c  ).hexdigest().encode('utf-8') )
+#		icm = cm[0:7]
+		icm = "{0:09d}".format(int(  cm[0:7]   ,16))
+		return icm
 
 	def mutateAll(self):
 		for g in self._genes:
@@ -337,6 +340,42 @@ class GEN(object):
 		fitSumN = sum(fitS)
 
 
+	def getRankProb(self, pos):
+		"for Rank Selection + Roulette  Wheel"
+		Nall = 1.
+#		i0 = len(self._indis)
+		N = len(self._indis)
+		if pos > N:
+			return 0
+		else:
+#			return 2.*Nall/i0 * (1. - pos/(i0-1))
+			return 2.*(N-pos)/N/(N+1) 
+
+	def rouletteWheelSelection(self):
+		fitSumN = 1.
+		offspring = []
+		for i in range(len(self._indis)):
+			r = random.uniform(0.,1.)
+#			print i, r
+			sumRankFit = 0.
+			winner = 0
+			nTries = 0
+			while r > sumRankFit and nTries < 10*len(self._indis):
+				winner = random.randint(0,len(self._indis))
+				sumRankFit += self.getRankProb(winner)
+				nTries += 1
+#				print " ", winner, sumRankFit, self.getRankProb(winner),  nTries
+			offspring.append(winner)
+		print sorted(offspring)
+#		self._indis[looser] = indi.mitosis(self._indis[winner])
+		newindis = []
+		for i in sorted(offspring):
+			newindis.append(indi.mitosis(self._indis[i]))
+		for i in range(len(self._indis)):
+			self._indis[i] = newindis[i]
+
+
+
 
 	def reproNFittest(self,N):
 		cntInidis = len(self._indis)
@@ -375,7 +414,7 @@ class GEN(object):
 				
 	
 	def evalFit(self,ind):
-		print "overload me!"
+#		print "overload me!"
 		fit = sum(ind.getall()[:5])
 		ind._fitness = fit
 
@@ -538,7 +577,7 @@ def test_IO():
 
 def test_world():
 	proto = indi( getBeam())
-	Gen0 = GEN.clone(proto,10)
+	Gen0 = GEN.clone(proto,100)
 	Gen0.mutateAll()
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
@@ -546,7 +585,9 @@ def test_world():
 	print 
 	print "Selection, Reproduction"
 	print 
-	Gen0.reproNFittest(3)
+	Gen0.rouletteWheelSelection()
+	print Gen0
+#	Gen0.reproNFittest(3)
 	print 
 	print "Crossover"
 	print 
