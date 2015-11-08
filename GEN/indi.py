@@ -129,11 +129,10 @@ Individual.
 ### GA relevant functions below
 
 	def mitosis(self):
-		return copy.deepcopy(self._genes) 
+		clone = indi(self._genes)
+		clone.fitness = self.fitness
+		return clone 
 
-#	@classmethod
-#	def mitosis(cls,ind):
-#		return cls(ind._genes)
 
 #	def mutateI(self,I):
 #		self[I].mutate()
@@ -164,14 +163,14 @@ Individual.
 
 	def __add__(self , other):
 		"A+B: create offspring with random genes from both parents"
-		child = indi(self.mitosis())
+		child = self.mitosis()
 		for i in range(len(self)):
 			child[i] = self[i] + other[i]
 		return child
 
 	def __mul__(self , other):
 		"A*B: create offspring with mean of each gene from both parents"
-		child = indi(self.mitosis())
+		child = self.mitosis()
 		for i in range(len(self)):
 			child[i] = self[i] * other[i]
 		return child
@@ -194,35 +193,51 @@ def getCar():
 
 def test_indi():
 	jeep = indi(getCar())
-	print jeep[0]
+	print "First gene: ", jeep[0]
 	for i in jeep:
 		print i
+	print "New Indi: "
 	print jeep
 	for i in jeep:
 		i.mutate()
+	print "All Single Gene Mutated Indi: "
 	print jeep
+	print "Single Gene Mutated Indi: "
 	jeep[1].mutate()
 	evalFit(jeep)
+	print "Single Gene Mutated Indi: "
 	print jeep
 	jeep.mutateAll()
 	evalFit(jeep)
+	print "Mutate All: "
 	print jeep	
 	jeep.perturbateAll()
 	evalFit(jeep)
+	print "Perturbate All: "
 	print jeep
+	print "Mutate Any 2: "
 	jeep.mutateAnyN(2)
 	evalFit(jeep)
-	print jeep
-	jag = indi(jeep.mitosis())
-	evalFit(jag)
-	print jag	
-	jeep.mutateAll()
+	print "first", jeep
+	jag = jeep.mitosis()
+	jag.mutateAll()
 	evalFit(jeep)
-	print jeep	
-	print jeep+jag
-	print jeep*jag
+	print "first", jeep	
+	for g in jeep:
+		print "  ", id(g)
+	print "second", jag	
+	for g in jag:
+		print "  ", id(g)
+
+	print "first+second : ", jeep+jag
+	print "first*second : ", jeep*jag
 	jeep[0:2] = jag[0:2]
-	print jeep	
+	print "first", jeep	
+	for g in jeep:
+		print "  ", id(g)
+	print "second", jag	
+	for g in jag:
+		print "  ", id(g)
 
 if __name__ == '__main__':
 	main()
