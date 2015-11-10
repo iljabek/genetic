@@ -120,6 +120,12 @@ Individual.
 #		icm = "{0:09d}".format(int(  cm[0:7]   ,16))
 		return icm
 
+	@property
+	def chrom(self):
+		"using all genes' values"
+		chrom = "".join([chr(65+int(random.uniform(0,1)*26)) for i in self.getall()])
+		return chrom
+
 	def __str__(self):
 		OUT="I'm "+self.hash+"! Fitness: " + str(self.fitness) +  "\n "
 		for g in self:
@@ -141,11 +147,12 @@ Individual.
 		for i in range(len(self)):
 			self[i].mutate()
 	
-	def perturbateAll(self):
+	def perturbAll(self):
 		for i in range(len(self)):
-			self[i].perturbate()
+			self[i].perturb()
 	
 	def mutateAnyN(self,N):
+		"pick random N without returning to the bin"
 		mutees = []
 		for i in range(N):
 			#choose random gene from all
@@ -158,6 +165,23 @@ Individual.
 					mutee = random.randint(0,len(self)-1)
 					tries+=1
 			self[mutee].mutate()
+#			self.mutateI(mutee)
+			mutees.append(mutee)
+
+	def perturbAnyN(self,N):
+		"pick random N without returning to the bin"
+		mutees = []
+		for i in range(N):
+			#choose random gene from all
+			mutee = random.randint(0,len(self)-1)
+			#don't mutate same gene twice
+			if (mutee in mutees):
+				tries=0
+				while (mutee in mutees) or tries<len(self):
+					#rechoose until new
+					mutee = random.randint(0,len(self)-1)
+					tries+=1
+			self[mutee].perturb()
 #			self.mutateI(mutee)
 			mutees.append(mutee)
 
@@ -198,6 +222,7 @@ def test_indi():
 		print i
 	print "New Indi: "
 	print jeep
+	print jeep.chrom
 	for i in jeep:
 		i.mutate()
 	print "All Single Gene Mutated Indi: "
@@ -211,9 +236,9 @@ def test_indi():
 	evalFit(jeep)
 	print "Mutate All: "
 	print jeep	
-	jeep.perturbateAll()
+	jeep.perturbAll()
 	evalFit(jeep)
-	print "Perturbate All: "
+	print "perturb All: "
 	print jeep
 	print "Mutate Any 2: "
 	jeep.mutateAnyN(2)

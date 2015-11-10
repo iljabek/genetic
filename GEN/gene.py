@@ -86,9 +86,9 @@ Gene.
 		"new value within range"
 		self.val = random.uniform(self.min , self.max)
 
-	def perturbate(self): # shuffle
+	def perturb(self): # shuffle
 		"move by small amount around the current value"
-		self.val = random.gauss( float(self.val) , (self.max-self.min)/10. )
+		self.val = random.gauss( float(self.val) , (self.max-self.min)/100. )
 
 		pass
 
@@ -115,7 +115,7 @@ def test_gene():
 	print "A*B",cog*sproc
 
 	print "pre: ", cog
-	cog.perturbate()
+	cog.perturb()
 	print "pert:", cog
 
 
