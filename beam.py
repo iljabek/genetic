@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import genetic
+#import genetic
+import GEN
 import os
 import sys
 
@@ -9,44 +10,16 @@ def gaussian(x, mu, sig):
 
 class GENBeam(genetic.GEN):
 	"Custom Generation Class: overload Fitness evaluation"
-	#@staticmethod
 	def evalFit(self,ind):
-		prefit = self.getMemory(ind)
-		if prefit > 0: #found individual in prev. generations!
-			print "    Know "+ ind._name +" already!"
-			return prefit
-			
-	#Date Scan Chunk Stat PEnergy PowOpt Pow Mat TarDiam TarLen TarDist Cur1 Cur2 TunRad TunLen PosFoc BinN BinMin BinMax Fitness
 		fit = 1.
-		fit *= gaussian(ind.getall()[0],25.,5.) #+ 1.*gaussian(ind.getall()[0],10.,3.)  #En
-		fit *= gaussian(ind.getall()[1],5.,1.)  #Pow
-		fit *= dict(zip(("myGraphite","myBeryllium","Water","quartz","Tungsten"),[0.1,0.99,0.1,0.2,0.01]))[ind.getall()[2]]    #Mat		
-		fit *= gaussian(ind.getall()[3],4.,0.5)  #TarDia
-		fit *= gaussian(ind.getall()[4],80.,10.)  #TarLen
-		fit *= gaussian(ind.getall()[5],14043.,3.)  #TarPos
-		fit *= gaussian(ind.getall()[6],225.,30.) #+ 0.5*gaussian(ind.getall()[0],350.,10.)   #I1
-		fit *= gaussian(ind.getall()[7],225.,30.)  #I2
-		fit *= gaussian(ind.getall()[8],200.,15.) #+ 1.*gaussian(ind.getall()[0],300.,3.)   #TunRad
-		fit *= gaussian(ind.getall()[9],300.,100.)  #TunLen
-		fit *= gaussian(ind.getall()[10],5.,1.)  #PosFocT
+		fit *= gaussianind.getall()[0],0.4,0.02)  #Pow
 		ind._fitness = fit
 
 
 def getBeam():
 	"Genome prototype"
 	beam = []
-	#Date Scan Chunk Stat PEnergy PowOpt Pow Mat TarDiam TarLen TarDist Cur1 Cur2 TunRad TunLen PosFoc BinN BinMin BinMax Fitness
-	beam.append( genetic.gene("PEnergy", [     1,   100, 0.01   ]        ) )#0
-	beam.append( genetic.gene("Pow",     [   0.2,     5, 0.0001 ]        ) )#1
-	beam.append( genetic.gene("Mat",     ("myGraphite","myBeryllium","Water","quartz","Tungsten")) )
-	beam.append( genetic.gene("TarDiam", [     1,    10, 0.001  ]        ) )#5
-	beam.append( genetic.gene("TarLen",  [    20,   200, 0.01   ]        ) )#4
-	beam.append( genetic.gene("TarDist", [ 13963, 14063, 0.01   ]        ) )#6
-	beam.append( genetic.gene("Cur1",    [   100,   350, 0.01   ]        ) )#7
-	beam.append( genetic.gene("Cur2",    [   100,   350, 0.01   ]        ) )#8
-	beam.append( genetic.gene("TunRad",  [    50,   500, 0.1    ]        ) )#3
-	beam.append( genetic.gene("TunLen",  [    10,  1000, 0.1    ]        ) )#2
-	beam.append( genetic.gene("PosFoc",  [     1,     9, 0.001  ]        ) )#9
+	beam.append( GEN.gene("Pow",     [   0.2,     5, 0.0001 ]        ) )#1
 	return beam
 
 

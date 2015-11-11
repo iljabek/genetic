@@ -218,6 +218,10 @@ Generation.
 
 	def evalFit(self,ind):
 		print "overload me!"
+		prefit = self.getMemory(ind)
+		if prefit > 0: #found individual in prev. generations!
+			print "    Know "+ ind._name +" already!"
+			return prefit
 		fit = sum(ind.getall()[:5])
 		ind.fitness = fit
 	

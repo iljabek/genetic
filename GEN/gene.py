@@ -13,7 +13,7 @@ def main():
 class gene(object):
 	"""
 Gene. 
-	has val from max..min
+	has val from 0..1
 	setter truncates input outside range
 	mutate sets val from a uniform distribution
 	"""
@@ -25,48 +25,27 @@ Gene.
 #		self._val = decimal.Decimal(0).quantize(decimal.Decimal('1.E-7'), rounding=decimal.ROUND_DOWN)
 	
 	@property
-	def max(self):
-		"Getter for max value"
-		return self._max
-	@max.setter
-	def max(self, inmax):
-		"max setter, must be >= min"
-		self._max = max(inmax, self.min)
-
-	@property
-	def min(self):
-		"Getter for min value"
-		return self._min
-	@min.setter
-	def min(self, inmin):
-		"min setter, must be <= max"
-		self._min = min(inmin, self.max)
-
-	@property
 	def val(self):
 		"Getter for current value"
 		return self._val
 	@val.setter
 	def val(self, inval):
 		"""
-		Setter puts inval into min.....val......max range
+		Setter puts inval into 0.....val......1 range
 		"""
-		tmpval = min( max(inval, self.min) , self.max)
+		tmpval = min( max(inval, 0.) , 1.)
 #		self._val = tmpval
 		self._val = decimal.Decimal(tmpval).quantize(decimal.Decimal('1.E-8'), rounding=decimal.ROUND_DOWN)
 		if tmpval != inval:
-			msg = "* gene input " + str(inval) + " outside range " 
-			msg += str(self.min) + ".." + str(self.max) 
+			msg = "* gene input " + str(inval) + " outside range 0..1" 
 			msg += ", set to " +str(self.val)
 			print msg
 	
 	def __str__(self):
-		return str(self.val)+ " in (" +str(self.min) + ".." + str(self.max)+ ")"
+		return str(self.val)
 
 	def copy(self):
 		c = gene(self.val)
-		c.min = self.min
-		c.max = self.max
 		return c
 		
 	def __mul__(self , other):
@@ -84,13 +63,11 @@ Gene.
 	
 	def mutate(self): # shuffle
 		"new value within range"
-		self.val = random.uniform(self.min , self.max)
+		self.val = random.uniform(0. , 1.)
 
 	def perturb(self): # shuffle
 		"move by small amount around the current value"
-		self.val = random.gauss( float(self.val) , (self.max-self.min)/100. )
-
-		pass
+		self.val = random.gauss( float(self.val) , 1./100. )
 
 
 def test_gene():

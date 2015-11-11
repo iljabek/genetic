@@ -123,11 +123,11 @@ Individual.
 	@property
 	def chrom(self):
 		"using all genes' values"
-		chrom = "".join([chr(65+int(random.uniform(0,1)*26)) for i in self.getall()])
+		chrom = "".join([chr(65+int(i*25)) for i in self.getall()])
 		return chrom
 
 	def __str__(self):
-		OUT="I'm "+self.hash+"! Fitness: " + str(self.fitness) +  "\n "
+		OUT="I'm "+self.hash+"("+self.chrom+")! Fitness: " + str(self.fitness) +  "\n "
 		for g in self:
 			OUT += str(g) + " " 
 		return OUT
