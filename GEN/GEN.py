@@ -48,7 +48,7 @@ Generation.
 				self._indis.append(copy.deepcopy(i))
 			self._num = indis._num
 			self._memory = copy.deepcopy(indis._memory)
-		print self._indis
+#		print self._indis
 
 
 	def __getitem__(self, item):
@@ -136,6 +136,14 @@ Generation.
 	def getFitSumN(self,N):
 		return sum(self.getFitsN(N))	
 	
+	def getNofFitSum(self, SUMM):
+		"take indis making SUMM of the generation fitness" 
+		for i in range(len(self)-1):
+			if self.getFitSumN(i)/self.getFitSumN(len(self)) >= SUMM:
+				return i
+		return len(self)
+
+
 	def getFitProb(self, pos):
 		"""
 			probability weighted by fitness, min-capped for indis-to-keep
@@ -174,18 +182,24 @@ Generation.
 	def getHashes(self):
 		return [i.hash for i in self]
 	
+	def getUniqueIndis(self):
+		# Magic follows, don't touch!
+		## set := only unique, return length of set  
+		return len(list(set(self.getHashes())))
+
 	def getUniqueGenes(self):
 		u=[]
 		# Magic follows, don't touch!
-		## set = only unique 
-		for g in range(len(self.getWinner())):
-			u.append(len(list(set([ind[g] for ind in self]))))
+		for g in range(len(self[0])):
+			u.append(len(list(set([ind[g].val for ind in self]))))
 		return u
 
 	
 	def printFitness(self,N):
-#		subGen = self[0:N]
-		print " Fitness dispositions: ",[ '{0:.3g}'.format(f) for f in self.getFitsN(N)], " Sum:", Gen.getFitSumN(N)
+		print " Fitness dispositions: ",[ '{0:.3g}'.format(f) for f in self.getFitsN(N)], " Sum:", self.getFitSumN(N)
+
+	def printChroms(self,N):
+		print " Chrom. dispositions: ",[ f.chrom for f in self[0:N]], " \nSum:", self.getFitSumN(N)
 
 #### Changing Methods
 
@@ -231,7 +245,7 @@ Generation.
 	
 	def sortFittest(self):
 		winners     = zip(  [i.fitness for i in self]  ,  self  )
-		print winners
+#		print winners
 #		self.i = 0
 		sortedindis = list(reversed(zip(*sorted( winners ))[1]))
 		for i in range(len(sortedindis)):
@@ -261,27 +275,24 @@ Generation.
 
 	def Selection_RouletteWheel(self):
 		"""
-			depends on self.WinShareToReporduce fraction
+#			depends on self.WinShareToReporduce fraction
 			depends on self.WinnersToProtect number
 			depends on self.WeightMode
 		"""
 		fitSumN = 1.
 		W = self.WinnersToProtect
-		N = int( self.WinShareToReporduce * len(self))
+#		N = int( self.WinShareToReporduce * len(self))
 		
-		offspring = []
-		if W>1:
-			offspring += self[0:W]
-		elif W==1:
-			offspring += [ self[0:W] ]
+		offspring = [] # index of indis
+		offspring += range(0,W)
 
 		for i in range(len(self) - len(offspring)):
 			winner = self.RouletteWheelIndi()
 			offspring.append(winner)
 		offspring = sorted(offspring)
 		print "Sorted Offspring: ", offspring
-		newindis = []
-		for i in offspring:
+		newindis = [] # indis
+ 		for i in offspring:
 			newindis.append(self[i].mitosis())
 		for i in range(len(self)):
 			self[i] = newindis[i]
@@ -335,14 +346,14 @@ Generation.
 ### Crossover
 
 	def crossover(self):
-		self.mixCrossover(self.WinnersToProtect)
+		self.mixCrossover()
 
 	def mixCrossover(self):
 		"""
 			depends on self.WinnersToProtect number
 		"""
 		W = self.WinnersToProtect
-		for g in range(len(self.getWinner())): # for each gene
+		for g in range(len(self[0])): # for each gene
 			# encapsulate value in one-element-array
 			genpool=[[ind[g].val] for ind in self]
 			random.shuffle(genpool)
@@ -385,12 +396,13 @@ Generation.
 						#break
 				#if len(clones2mutate)>=K:
 					#break
-		print "* found clones:" , len(clones2mutate)
-#		print "* ", clones2mutate
-		NGenesTot = int(len(self.getWinner()) * self.ProbMutateGene)
-		print "* Mutating ", NGenesTot, " genes"
-		for i in clones2mutate:
-			self[i].mutateAnyN(NGenesTot)
+		if len(clones2mutate) > 0:
+			print "* found clones:" , len(clones2mutate)
+			print "* ", clones2mutate
+			NGenesTot = int(len(self[0]) * self.ProbMutateGene)
+			print "* Mutating ", NGenesTot, " genes"
+			for i in clones2mutate:
+				self[i].mutateAnyN(NGenesTot)
 
 	def mutateRandom(self):
 		"""
@@ -399,7 +411,7 @@ Generation.
 			depends on self.ProbMutateIndi
 		"""
 		W = self.WinnersToProtect
-		NGenesTot = int(len(self.getWinner()) * self.ProbMutateGene)
+		NGenesTot = int(len(self[0]) * self.ProbMutateGene)
 		
 		print "* Mutated: ",
 		for i in range(W,len(self)):
@@ -525,58 +537,58 @@ def test_IO():
 	Gen0.mutateAll()
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
-	#print Gen0.getWinner()
+	#print Gen0[0]
 	writeStateToFile(Gen0,"./evol0/",True,True) #joined,gziped
 	Gen0.mutateAll()
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
-	print Gen0.getWinner()
+	print Gen0[0]
 	writeStateToFile(Gen0,"./evol0/",True,True) #joined,gziped
 	del Gen0
 	Gen0 = 	readStateFromFile("./evol0/",True,True) #joined,gziped
-	print Gen0.getWinner()
+	print Gen0[0]
 
 	Gen0.mutateClones()
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
-	#print Gen0.getWinner()
+	#print Gen0[0]
 	writeStateToFile(Gen0,"./evol0/",False,True) #joined,gziped
 	Gen0.mutateAll()
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
-	print Gen0.getWinner()
+	print Gen0[0]
 	writeStateToFile(Gen0,"./evol0/",False,True) #joined,gziped
 	del Gen0
 	Gen0 = 	readStateFromFile("./evol0/",False,True) #joined,gziped
-	print Gen0.getWinner()
+	print Gen0[0]
 
 	Gen0.mutateAll()
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
-	#print Gen0.getWinner()
+	#print Gen0[0]
 	writeStateToFile(Gen0,"./evol0/",True,False) #joined,gziped
 	Gen0.mutateAll()
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
-	print Gen0.getWinner()
+	print Gen0[0]
 	writeStateToFile(Gen0,"./evol0/",True,False) #joined,gziped
 	del Gen0
 	Gen0 = 	readStateFromFile("./evol0/",True,False) #joined,gziped
-	print Gen0.getWinner()
+	print Gen0[0]
 	
 	Gen0.mutateAll()
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
-	#print Gen0.getWinner()
+	#print Gen0[0]
 	writeStateToFile(Gen0,"./evol0/",False,False) #joined,gziped
 	Gen0.mutateAll()
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
-	print Gen0.getWinner()
+	print Gen0[0]
 	writeStateToFile(Gen0,"./evol0/",False,False) #joined,gziped
 	del Gen0
 	Gen0 = 	readStateFromFile("./evol0/",False,False) #joined,gziped
-	print Gen0.getWinner()
+	print Gen0[0]
 
 
 
@@ -596,23 +608,29 @@ def test_GEN():
 	# Weights: 0=fitness, 1=uniform, 2=linear, (3=exp)
 	Gen0.WeightMode = 0 
 	Gen0.checkGAParameters()
-	print Gen0
+	print "Unique Indis: ", Gen0.getUniqueIndis() , " , Unique Genes: ", Gen0.getUniqueGenes()
+#	print Gen0
 	Gen0.mutateClones()
 	print "mutateClones"
-	print Gen0
+	print "Unique Indis: ", Gen0.getUniqueIndis() , " , Unique Genes: ", Gen0.getUniqueGenes()
+#	print Gen0
 	Gen0.mutateRandom()
 	print "mutateRandom"
-	print Gen0
+	print "Unique Indis: ", Gen0.getUniqueIndis() , " , Unique Genes: ", Gen0.getUniqueGenes()
+#	print Gen0
 	Gen0.perturbRandom()
 	print "perturbRandom"
-	print Gen0
+	print "Unique Indis: ", Gen0.getUniqueIndis() , " , Unique Genes: ", Gen0.getUniqueGenes()
+#	print Gen0
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
-	print Gen0	
+	print "Unique Indis: ", Gen0.getUniqueIndis() , " , Unique Genes: ", Gen0.getUniqueGenes()
+#	print Gen0	
 	Gen0.evalFit = evalFitOverload
 	Gen0.evalFitAll()
 	Gen0.sortFittest()
-	print Gen0
+	print "Unique Indis: ", Gen0.getUniqueIndis() , " , Unique Genes: ", Gen0.getUniqueGenes()
+#	print Gen0
 
 	print "----------"
 	Gen0.WinShareToReporduce = 0.5 
@@ -634,6 +652,13 @@ def test_GEN():
 	for i in range(len(Gen0)):
 		print Gen0.getProb(i)
 	print "----------"
+
+	Gen0.Selection_RouletteWheel()
+	print "perturbRandom"
+	print "Unique Indis: ", Gen0.getUniqueIndis() , " , Unique Genes: ", Gen0.getUniqueGenes()
+#	print Gen0
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
 
 if __name__ == '__main__':
 	main()
