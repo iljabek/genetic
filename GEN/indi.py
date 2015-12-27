@@ -21,6 +21,7 @@ Individual.
 	contains genes, defining uniqe hash
 	can be iterated over genes
 	can mutate all or some genes
+	i % o gives number of different genes
 	"""
 	def __init__(self,genes): #,invals=[]):
 		self._genes  = copy.deepcopy(genes) # list of genes
@@ -198,6 +199,15 @@ Individual.
 		for i in range(len(self)):
 			child[i] = self[i] * other[i]
 		return child
+	
+	def __mod__(self,other):
+		" self % other = number of different genes "
+		diff = 0
+		for i,o in zip(self,other):
+			if i!=o:
+				diff += 1
+		return diff
+
 
 def evalFit(ind):
 	print "overload me!"
@@ -253,6 +263,8 @@ def test_indi():
 	print "second", jag	
 	for g in jag:
 		print "  ", id(g)
+
+	print "first%second : ",jeep%jag
 
 	print "first+second : ", jeep+jag
 	print "first*second : ", jeep*jag

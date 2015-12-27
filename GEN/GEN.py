@@ -14,7 +14,8 @@ from gene import gene
 
 def main():
 	pass
-	test_GEN()
+#	test_GEN()
+	test_Memory()
 #	test_IO()
 
 class GEN(object):
@@ -33,12 +34,13 @@ Generation.
 		self._indis  = []  # list of indis
 #		self._indis  = copy.deepcopy(indis) # list of indis
 		#GA parameters shared by methods
-		self.ProbMutateGene = 0.1      #float 0..1
+		self.ProbMutateGene = 0.6      #float 0..1
 		self.ProbMutateIndi = 0.       #float 0..1
 		self.WinShareToReporduce = 0.5 #float 0..1
 		self.WinnersToProtect = 1      #int 0..len(self)
 		# Weights: 0=fitness, 1=uniform, 2=linear, (3=exp)
 		self.WeightMode = 0 
+		self.GeneCousins = 1				#int 0..len(self[0])
 
 		if isinstance(indis,list):
 			for i in indis:
@@ -119,6 +121,7 @@ Generation.
 			ProbMutateIndi = Probabilty 
 			WinnersToProtect = Number, from 0 to all indis
 			WinShareToReporduce = Share; from WinnersToProtect to all indis, at least 1
+			GeneCousins = Number of genes, from 0 to indi length
 		"""
 		self.ProbMutateGene = min( max(self.ProbMutateGene, 1./len(self[0])) , 1.)
 		self.ProbMutateIndi = min( max(self.ProbMutateIndi, 0.) , 1.)
@@ -127,6 +130,7 @@ Generation.
 		
 		# Weights: 0=fitness, 1=uniform, 2=linear, (3=exp)
 		self.WeightMode = min( max(self.WeightMode, 0) , 3)
+		self.GeneCousins = min( max(self.GeneCousins, 0) , len(self[0]))
 
 	
 	def getFitsN(self,N):
@@ -152,8 +156,9 @@ Generation.
 		N = int( self.WinShareToReporduce * len(self))
 		if pos >= N or N <= 0:
 			return 0
-		fitSumN = sum( [ max(i.fitness , 1./N) for i in self[0:N] ] )
-		fitProb = self[pos].fitness / fitSumN
+		fits = [ max(i.fitness , 1./N) for i in self[0:N] ]
+		fitSumN = sum( fits )
+		fitProb = fits[pos] / fitSumN
 		return fitProb
 
 
@@ -167,8 +172,10 @@ Generation.
 		#N = len(self)
 		if pos >= N or N <= 0:
 			return 0
-		else:
-			return 2.*(N-pos)/N/(N+1)
+		fits = [ max(2.*(N-i)/N/(N+1) , 1./N) for i in range(0,N) ]
+		fitSumN = sum( fits )
+		fitProb = fits[pos] / fitSumN
+		return fitProb
 
 	def getProb(self, pos):
 		"""
@@ -206,37 +213,48 @@ Generation.
 	def levelUp(self):
 		self._num += 1
 
+
 	def fillMemory(self,ind):
-		h=ind.hash
+		"""
+			Memory Structure:
+			( [GenNo_1, fitness_1] ,  [GenNo_2, fitness_2] , ... )
+		"""
+		h = ind.hash
 		if not h in self._memory:
-			self._memory[h] = ind.fitness
-		#else:
-			#pass
+			self._memory[h] = [ (self._num,ind.fitness) ]
+		else:
+			if self._memory[h][-1][0] < self._num and self._memory[h][-1][1] > 0:	
+				self._memory[h].append( (self._num,ind.fitness) ) 
+			#else	
+			#  pass
 			#print "  * found "+h+" in the GenMem!"
 
 	def updateMemory(self):
 		for i in self:
-			h=i.hash
-			if not h in self._memory:
-				self._memory[h] = i.fitness
-			#else:
-				#print "  * found "+h+" in the GenMem!"
+			self.fillMemory(i)
 
 	def getMemory(self,ind):
-		h=ind.hash
+		h = ind.hash
 		if not h in self._memory:
-			return -1
+			return [ (-1,-1) ]
 		else:
 			return self._memory[h]
 
+	def getFitnessMemory(self,ind):
+		m = self.getMemory(ind)
+		return m[-1][1]
+
+	def getMeanFitnessMemory(self,ind):
+		m = self.getMemory(ind)
+		return sum([f[1] for f in m]) / len(m)
 
 	def evalFit(self,ind):
 		print "overload me!"
-		prefit = self.getMemory(ind)
+		prefit = self.getMeanFitnessMemory(ind)
 		if prefit > 0: #found individual in prev. generations!
-			print "    Know "+ ind._name +" already!"
+			print "    Know "+ ind.hash +" already!"
 			return prefit
-		fit = sum(ind.getall()[:5])
+		fit = 1./( 1. + float(sum(ind.getall())) )
 		ind.fitness = fit
 	
 	def evalFitAll(self):
@@ -271,6 +289,7 @@ Generation.
 			nTries += 1
 #				print " ", winner, sumRankFit, self.getProb(winner),  nTries
 
+		print "* Roulette needed ",nTries," tries"
 		return winner
 
 	def Selection_RouletteWheel(self):
@@ -289,7 +308,8 @@ Generation.
 		for i in range(len(self) - len(offspring)):
 			winner = self.RouletteWheelIndi()
 			offspring.append(winner)
-		offspring = sorted(offspring)
+		offspring.sort(reverse=False)
+#		offspring = sorted(offspring)
 		print "Sorted Offspring: ", offspring
 		newindis = [] # indis
  		for i in offspring:
@@ -377,7 +397,7 @@ Generation.
 		"""
 			depends on self.ProbMutateGene
 		"""
-		clones2mutate = []       # list of indeces of indis to be mutated
+		clones2mutate = []       # list of indexes of indis to be mutated
 		allHashes = self.getHashes()       # list of hashes
 		#get indeces which have earlier accurances
 		#by going from start, checking all following
@@ -402,6 +422,29 @@ Generation.
 			NGenesTot = int(len(self[0]) * self.ProbMutateGene)
 			print "* Mutating ", NGenesTot, " genes"
 			for i in clones2mutate:
+				self[i].mutateAnyN(NGenesTot)
+	
+	def mutateCousins(self):
+		"""
+			depends on self.ProbMutateGene
+			depends on self.GeneCousins
+		"""
+		cousins2mutate = []       # list of indexes of indis to be mutated
+		#get indeces which have earlier accurances
+		#by going from start, checking all following
+		for i in range(len(self)-1):   # last one never needs to be checked 
+			if not i in cousins2mutate:    #else it's a registered clone
+				for j in range(i+1,len(self)):
+					if not j in cousins2mutate:    #else it's a registered clone
+						if self[i] % self[j] == 1:
+							cousins2mutate.append(j)
+
+		if len(cousins2mutate) > 0:
+			print "* found cousins:" , len(cousins2mutate)
+			print "* ", cousins2mutate
+			NGenesTot = int(len(self[0]) * self.ProbMutateGene)
+			print "* Mutating ", NGenesTot, " genes"
+			for i in cousins2mutate:
 				self[i].mutateAnyN(NGenesTot)
 
 	def mutateRandom(self):
@@ -591,6 +634,30 @@ def test_IO():
 	print Gen0[0]
 
 
+def test_Memory():
+	print "*** Test Generation"
+	proto = indi( getCar())
+	proto.mutateAll()
+	Gen0 = GEN.clone(proto,9)
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
+	
+	print Gen0._memory
+	
+	Gen0.updateMemory()
+	print Gen0._memory
+	
+	Gen0.mutateClones()
+	Gen0.evalFitAll()
+	Gen0.sortFittest()
+	Gen0.updateMemory()
+	print Gen0._memory
+
+	Gen0.levelUp()
+	Gen0.updateMemory()
+	print Gen0._memory
+
+
 
 def test_GEN():
 	print "*** Test Generation"
@@ -607,6 +674,7 @@ def test_GEN():
 	Gen0.WinnersToProtect = 1      #int 0..len(self)
 	# Weights: 0=fitness, 1=uniform, 2=linear, (3=exp)
 	Gen0.WeightMode = 0 
+	Gen0.GeneCousins = 1 
 	Gen0.checkGAParameters()
 	print "Unique Indis: ", Gen0.getUniqueIndis() , " , Unique Genes: ", Gen0.getUniqueGenes()
 #	print Gen0

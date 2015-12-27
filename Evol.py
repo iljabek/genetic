@@ -9,7 +9,9 @@ import sys
 
 def gaussian(x, mu, sig):
 	import numpy as np
-	return np.exp(-np.power((float(x) - float(mu))/float(sig), 2.) / 2.) / ( 2. * np.pi * np.sqrt(float(sig)) )
+	gaus = np.exp(-np.power((float(x) - float(mu))/float(sig), 2.) / 2.) 
+	gaus /= ( 2. * np.pi * np.sqrt(float(sig)) )
+	return gaus 
 
 class GENBeam(GEN.GEN):
 	"Custom Generation Class: overload Fitness evaluation"
@@ -50,7 +52,8 @@ def main(argv):
 	params.append(0.2)    #4  ProbMutateIndi
 	params.append(0.5)    #5  WinShareToReporduce
 	params.append(1)      #6  WinnersToProtect
-	params.append(0)      #7  WeightMode
+	params.append(1)      #7  WeightMode
+	params.append(1)      #8  GeneCousins
 
 	print params
 
@@ -60,13 +63,15 @@ def main(argv):
 			GenSize  = params[1] 
 			) 
 #	print iGen
-	print "Unique Indis: ", iGen.getUniqueIndis() , " , Unique Genes: ", iGen.getUniqueGenes()
+	print "Unique Indis: ", iGen.getUniqueIndis() , 
+	print ", Unique Genes: ", iGen.getUniqueGenes()
 	iGen.ProbMutateGene = params[3]      #float 0..1
 	iGen.ProbMutateIndi = params[4]      #float 0..1
 	iGen.WinShareToReporduce = params[5] #float 0..1
 	iGen.WinnersToProtect = params[6]    #int 0..len(self)
 	# Weights: 0=fitness, 1=uniform, 2=linear, (3=exp)
 	iGen.WeightMode = params[7] 
+	iGen.GeneCousins = params[8] 
 	iGen.checkGAParameters()
 
 	Ntrials = params[0]
@@ -107,7 +112,7 @@ def main(argv):
 			trials.append( iGen[0].mitosis() )
 #			open(evolpath+"/params.txt","a").write(" ".join(map(str,trials[t]))+"\n")
 #			GEN.writeStateToFile(iGen, evolpath, joined=False,gziped=False)
-			GEN.writeStateToFile(iGen, evolpath, joined=True,gziped=True)
+#			GEN.writeStateToFile(iGen, evolpath, joined=True,gziped=True)
 	except KeyboardInterrupt:
 		pass
 
