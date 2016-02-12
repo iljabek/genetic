@@ -14,8 +14,8 @@ from gene import gene
 
 def main():
 	pass
-#	test_GEN()
-	test_Memory()
+	test_GEN()
+#	test_Memory()
 #	test_IO()
 
 class GEN(object):
@@ -34,13 +34,18 @@ Generation.
 		self._indis  = []  # list of indis
 #		self._indis  = copy.deepcopy(indis) # list of indis
 		#GA parameters shared by methods
-		self.ProbMutateGene = 0.6      #float 0..1
-		self.ProbMutateIndi = 0.       #float 0..1
-		self.WinShareToReporduce = 0.5 #float 0..1
-		self.WinnersToProtect = 1      #int 0..len(self)
-		# Weights: 0=fitness, 1=uniform, 2=linear, (3=exp)
-		self.WeightMode = 0 
-		self.GeneCousins = 1				#int 0..len(self[0])
+		" Probability to mutate a gene "
+		self.MutateGeneProb = 0.6      #float 0..1 => (0..1)*NoGenes
+		" Probability to mutate an individual "
+		self.MutateIndiProb = 0.       #float 0..1 => (0..1)*NoIndis
+		" Share (Prob.) of all individuals to reproduce"
+		self.WinToReporduceFrac = 0.5  #float 0..1 => (0..1)*NoIndis
+		" Elitism, share of individuals which are not modified"
+		self.ElitistFrac    = 0.1      #float 0..1 => (0..1)*NoIndis
+		# Weights: 0/3=fitness, 1/3=uniform, 2/3=linear, (3=exp)
+		self.WeightMode     = 0
+#		self.__WeightModes  = 2
+		self.GeneCousins    = 0.6			 #float 0..1=> (0..1)*NoGenes
 
 		if isinstance(indis,list):
 			for i in indis:
@@ -115,22 +120,40 @@ Generation.
 	def getWinner(self):
 		return self[0]
 
+		
+	def aP(self,f,N=1,Nmin=0):
+		"""
+			adjustProb
+			min( max( f , 0 ) , 1  ) => 0..f..1
+			round(f*N)/N => round to the closest binned value
+			N is no. of bins.
+			# round() vs. int() <=> bin center vs. left edge
+		"""
+		if N <=0:
+			return 0.
+		else:
+			return ( min( max( round(f * N) , Nmin) , N-1) ) / N
+
 	def checkGAParameters(self):
 		"""
-			ProbMutateGene = Probabilty, min. 1 gene 
-			ProbMutateIndi = Probabilty 
-			WinnersToProtect = Number, from 0 to all indis
-			WinShareToReporduce = Share; from WinnersToProtect to all indis, at least 1
+			MutateGeneProb = Probabilty, min. 1 gene (pragmatic, not mathematical reasoning)
+			MutateIndiProb = Probabilty 
+			ElitistFrac = Number, from 0 to all indis
+			WinToReporduceFrac = Share; from ElitistFrac to all indis, at least 1
 			GeneCousins = Number of genes, from 0 to indi length
 		"""
-		self.ProbMutateGene = min( max(self.ProbMutateGene, 1./len(self[0])) , 1.)
-		self.ProbMutateIndi = min( max(self.ProbMutateIndi, 0.) , 1.)
-		self.WinnersToProtect = min( max(self.WinnersToProtect, 0) , len(self))
-		self.WinShareToReporduce = min( max(self.WinShareToReporduce, max(self.WinnersToProtect,1)/len(self)) , 1.)
-		
+		self.MutateGeneProb = self.aP(self.MutateGeneProb, len(self[0]), 1)
+		print "* MutateGeneProb", self.MutateGeneProb, self.MutateGeneProb*len(self[0])
+		self.MutateIndiProb = self.aP(self.MutateIndiProb, len(self), 1)
+		print "* MutateIndiProb" , self.MutateIndiProb, self.MutateIndiProb *len(self)
+		self.ElitistFrac = self.aP(self.ElitistFrac, len(self))
+		print "* ElitistFrac" , self.ElitistFrac, self.ElitistFrac *len(self)
+		self.WinToReporduceFrac = self.aP(self.WinToReporduceFrac, len(self), 1) 		
+		print "* WinToReporduceFrac" , self.WinToReporduceFrac, self.WinToReporduceFrac *len(self)
+		self.GeneCousins = self.aP(self.GeneCousins, len(self[0]) , 1.)
+		print "* GeneCousins" , self.GeneCousins, self.GeneCousins *len(self[0])
 		# Weights: 0=fitness, 1=uniform, 2=linear, (3=exp)
-		self.WeightMode = min( max(self.WeightMode, 0) , 3)
-		self.GeneCousins = min( max(self.GeneCousins, 0) , len(self[0]))
+#		self.WeightMode 
 
 	
 	def getFitsN(self,N):
@@ -150,13 +173,14 @@ Generation.
 
 	def getFitProb(self, pos):
 		"""
-			probability weighted by fitness, min-capped for indis-to-keep
-			depends on self.WinShareToReporduce fraction
+			probability weighted by fitness, # min-capped for indis-to-keep
+			depends on self.WinToReporduceFrac fraction
 		"""
-		N = int( self.WinShareToReporduce * len(self))
+		N = int( self.WinToReporduceFrac * len(self))
 		if pos >= N or N <= 0:
 			return 0
-		fits = [ max(i.fitness , 1./N) for i in self[0:N] ]
+#		fits = [ max(i.fitness , 1./N) for i in self[0:N] ]
+		fits = [ i.fitness for i in self[0:N] ]
 		fitSumN = sum( fits )
 		fitProb = fits[pos] / fitSumN
 		return fitProb
@@ -165,10 +189,10 @@ Generation.
 	def getRankProb(self, pos):
 		"""
 			linear probability by position=rank
-			depends on self.WinShareToReporduce fraction
+			depends on self.WinToReporduceFrac fraction
 			for Rank Selection + Roulette  Wheel
 		"""
-		N = int( self.WinShareToReporduce * len(self))
+		N = int( self.WinToReporduceFrac * len(self))
 		#N = len(self)
 		if pos >= N or N <= 0:
 			return 0
@@ -181,9 +205,9 @@ Generation.
 		"""
 			depends on self.WeightMode
 		"""
-		if   self.WeightMode == 0:
+		if   self.WeightMode == 0 :#/self.__WeightModes :
 			return self.getFitProb(pos)
-		elif self.WeightMode == 1:
+		elif self.WeightMode == 1 :#/self.__WeightModes :
 			return self.getRankProb(pos)
 	
 	def getHashes(self):
@@ -274,33 +298,47 @@ Generation.
 
 	def RouletteWheelIndi(self):
 		"""
-			depends on self.WinShareToReporduce fraction
-			depends on self.WinnersToProtect number
+			depends on self.WinToReporduceFrac fraction
+			#depends on self.ElitistFrac number
 			depends on self.WeightMode
 		"""
-		N = int( self.WinShareToReporduce * len(self))
+		N = int( self.WinToReporduceFrac * len(self))
 		r = random.uniform(0.,1.)
 		sumRankFit = 0.
 		winner = 0
 		nTries = 0
-		while r > sumRankFit and nTries < 10*len(self):
-			winner = random.randint( 0 , N )
-			sumRankFit += self.getProb(winner)
-			nTries += 1
+#		while r > sumRankFit and nTries < 10*len(self):
+#			winner = random.randint( 0 , N )
+#			sumRankFit += self.getProb(winner)
+#			nTries += 1
 #				print " ", winner, sumRankFit, self.getProb(winner),  nTries
 
-		print "* Roulette needed ",nTries," tries"
+		sumRankFit = 0.
+		indiQueue = range(len(self))
+		random.shuffle(indiQueue)
+#		print [ [i] for i in range(len(self)) ] 
+#		print len(self), range(len(self)) , indiQueue
+		indiFitnesses = [ self.getProb(i) for i in indiQueue  ]
+		winner = indiQueue[0]
+		for i in range(len(self)):
+			sumRankFit += indiFitnesses[i]
+#			print " ", i, winner, sumRankFit, self.getProb(winner)
+			if r > sumRankFit or i == len(self)-1:
+				winner = i
+				break
+		
+#		print "* Roulette needed ",nTries," tries"
 		return winner
 
 	def Selection_RouletteWheel(self):
 		"""
-#			depends on self.WinShareToReporduce fraction
-			depends on self.WinnersToProtect number
+			#depends on self.WinToReporduceFrac fraction
+			depends on self.ElitistFrac number
 			depends on self.WeightMode
 		"""
 		fitSumN = 1.
-		W = self.WinnersToProtect
-#		N = int( self.WinShareToReporduce * len(self))
+		W = int( self.ElitistFrac * len(self))
+#		N = int( self.WinToReporduceFrac * len(self))
 		
 		offspring = [] # index of indis
 		offspring += range(0,W)
@@ -320,39 +358,39 @@ Generation.
 
 	def Selection_NFittest(self):
 		"""
-			depends on self.WinShareToReporduce fraction
-			depends on self.WinnersToProtect number
+			depends on self.WinToReporduceFrac fraction
+			depends on self.ElitistFrac number
 			depends on self.WeightMode
 		"""	
-		N = int( self.WinShareToReporduce * len(self))
+		N = int( self.WinToReporduceFrac * len(self))
 		
-		cntInidis = len(self)
+		Nindis = len(self)
 #		fitSumN   = self.getFitSumN(N)
 		#print fitSumN
 		offspringN = []
-		for i in self[0:N]:
+		for i in range(Nindis):
 			#"calculate portion of children normed to fitness sum, at least one"
-#			NoOfWinner = max(1, int(1.*cntInidis*(i._fitness/fitSumN)))
-			NoOfWinner = int(cntInidis * self.getProb(winner))
+#			NoOfWinner = max(1, int(1.*Nindis*(i._fitness/fitSumN)))
+			NoOfWinner = int(1. * Nindis * self.getProb(i))
 			offspringN.append(NoOfWinner)
-		#print cntInidis, offspringN, sum(offspringN)
+		print Nindis, offspringN, sum(offspringN)
 
 		#"append if list too short, i.e. there are too few"
-		if sum(offspringN) < cntInidis :
-			for c in range( cntInidis-sum(offspringN) ):
+		if sum(offspringN) < Nindis :
+			for c in range( Nindis-sum(offspringN) ):
 				offspringN[c%len(offspringN)] += 1
 		
 		#"reduce if list too long, i.e. there are too many"
-		if sum(offspringN) > cntInidis :
-#			for c in range( N,N-(sum(offspringN)-cntInidis),-1 ):
-			for c in range( sum(offspringN)-cntInidis ):
+		if sum(offspringN) > Nindis :
+#			for c in range( N,N-(sum(offspringN)-Nindis),-1 ):
+			for c in range( sum(offspringN)-Nindis ):
 				offspringN[c%len(offspringN)] -= 1
 		
 		print " Offspring: ",offspringN, " ; Total: ", sum(offspringN)
 		# offspringN has for each position=indi no. of copies
 		# reduce by the already "done" N first indis
 		offspringN = [x-1 for x in offspringN if x > 0]
-		Nactual = cntInidis - sum(offspringN)
+		Nactual = Nindis - sum(offspringN)
 		# start with the first position to be replaced = N+1
 		looser=Nactual
 		for winner in range(Nactual):
@@ -362,6 +400,13 @@ Generation.
 				self[looser] = indi.mitosis(self[winner])
 				looser+=1
 
+	def show_SelectionProb(self):
+		"""
+			depends on self.WinToReporduceFrac fraction
+			depends on self.WeightMode
+		"""	
+		for i in range(len(self)):
+			print i, self.getProb(i), " fit"
 
 ### Crossover
 
@@ -370,17 +415,17 @@ Generation.
 
 	def mixCrossover(self):
 		"""
-			depends on self.WinnersToProtect number
+			depends on self.ElitistFrac number
 		"""
-		W = self.WinnersToProtect
+		W = int( self.ElitistFrac * len(self))
 		for g in range(len(self[0])): # for each gene
 			# encapsulate value in one-element-array
-			genpool=[[ind[g].val] for ind in self]
+			genpool=[ind[g].val for ind in self]
 			random.shuffle(genpool)
 #			random.shuffle(genpool) # not necessary, but soothing
 			#print genpool
 			for ind in range(W,len(self._indis)):
-				self[ind][g].val = genpool[ind][0]
+				self[ind][g].val = genpool[ind]
 
 	#def pairedCrossover(self):
 
@@ -395,7 +440,7 @@ Generation.
 
 	def mutateClones(self):
 		"""
-			depends on self.ProbMutateGene
+			depends on self.MutateGeneProb
 		"""
 		clones2mutate = []       # list of indexes of indis to be mutated
 		allHashes = self.getHashes()       # list of hashes
@@ -419,14 +464,14 @@ Generation.
 		if len(clones2mutate) > 0:
 			print "* found clones:" , len(clones2mutate)
 			print "* ", clones2mutate
-			NGenesTot = int(len(self[0]) * self.ProbMutateGene)
+			NGenesTot = int(len(self[0]) * self.MutateGeneProb)
 			print "* Mutating ", NGenesTot, " genes"
 			for i in clones2mutate:
 				self[i].mutateAnyN(NGenesTot)
 	
 	def mutateCousins(self):
 		"""
-			depends on self.ProbMutateGene
+			depends on self.MutateGeneProb
 			depends on self.GeneCousins
 		"""
 		cousins2mutate = []       # list of indexes of indis to be mutated
@@ -442,37 +487,37 @@ Generation.
 		if len(cousins2mutate) > 0:
 			print "* found cousins:" , len(cousins2mutate)
 			print "* ", cousins2mutate
-			NGenesTot = int(len(self[0]) * self.ProbMutateGene)
+			NGenesTot = int(len(self[0]) * self.MutateGeneProb)
 			print "* Mutating ", NGenesTot, " genes"
 			for i in cousins2mutate:
 				self[i].mutateAnyN(NGenesTot)
 
 	def mutateRandom(self):
 		"""
-			depends on self.WinnersToProtect number
-			depends on self.ProbMutateGene
-			depends on self.ProbMutateIndi
+			depends on self.ElitistFrac number
+			depends on self.MutateGeneProb
+			depends on self.MutateIndiProb
 		"""
-		W = self.WinnersToProtect
-		NGenesTot = int(len(self[0]) * self.ProbMutateGene)
+		W = int( self.ElitistFrac * len(self))
+		NGenesTot = int(len(self[0]) * self.MutateGeneProb)
 		
 		print "* Mutated: ",
 		for i in range(W,len(self)):
-			if random.uniform(0.,1.) < self.ProbMutateIndi:
+			if random.uniform(0.,1.) < self.MutateIndiProb:
 				print i,
 				self[i].mutateAnyN(NGenesTot)
 		print
 
 	def perturbRandom(self):
 		"""
-			depends on self.WinnersToProtect number
-			depends on self.ProbMutateIndi
+			depends on self.ElitistFrac number
+			depends on self.MutateIndiProb
 		"""
-		W = self.WinnersToProtect
+		W = int( self.ElitistFrac * len(self))
 		
 		print "* Mutated: ",
 		for i in range(W,len(self)):
-			if random.uniform(0.,1.) < self.ProbMutateIndi:
+			if random.uniform(0.,1.) < self.MutateIndiProb:
 				print i,
 				self[i].perturbAll()
 		print
@@ -667,14 +712,14 @@ def test_GEN():
 	print "minimal Gen: " , Gen0
 
 	print "----------"
-	Gen0 = GEN.clone(proto,9)
-	Gen0.ProbMutateGene = 0.5      #float 0..1
-	Gen0.ProbMutateIndi = 0.2       #float 0..1
-	Gen0.WinShareToReporduce = 0.5 #float 0..1
-	Gen0.WinnersToProtect = 1      #int 0..len(self)
+	Gen0 = GEN.clone(proto,100)
+	Gen0.MutateGeneProb = 0.5      #float 0..1
+	Gen0.MutateIndiProb = 0.2       #float 0..1
+	Gen0.WinToReporduceFrac = 0.5 #float 0..1
+	Gen0.ElitistFrac = 0.1      #int 0..len(self)
 	# Weights: 0=fitness, 1=uniform, 2=linear, (3=exp)
 	Gen0.WeightMode = 0 
-	Gen0.GeneCousins = 1 
+	Gen0.GeneCousins = 0.2 
 	Gen0.checkGAParameters()
 	print "Unique Indis: ", Gen0.getUniqueIndis() , " , Unique Genes: ", Gen0.getUniqueGenes()
 #	print Gen0
@@ -701,11 +746,11 @@ def test_GEN():
 #	print Gen0
 
 	print "----------"
-	Gen0.WinShareToReporduce = 0.5 
+	Gen0.WinToReporduceFrac = 0.5 
 	Gen0.WeightMode = 0
-#	print Gen0.WeightMode, Gen0.WinShareToReporduce, Gen0.WinnersToProtect, Gen0.ProbMutateGene, Gen0.ProbMutateIndi 
+#	print Gen0.WeightMode, Gen0.WinToReporduceFrac, Gen0.ElitistFrac, Gen0.MutateGeneProb, Gen0.MutateIndiProb 
 	Gen0.checkGAParameters()
-#	print Gen0.WeightMode, Gen0.WinShareToReporduce, Gen0.WinnersToProtect, Gen0.ProbMutateGene, Gen0.ProbMutateIndi 
+#	print Gen0.WeightMode, Gen0.WinToReporduceFrac, Gen0.ElitistFrac, Gen0.MutateGeneProb, Gen0.MutateIndiProb 
 
 	print "----------"
 	fs,rs,ps = 0,0,0
@@ -716,7 +761,7 @@ def test_GEN():
 		ps += Gen0.getProb(i)
 	print "Sum of Probs:", Gen0.getFitSumN(5), fs,rs,ps
 
-	Gen0.WeightMode = 1
+	Gen0.WeightMode = 1 #/ Gen0.__WeightModes
 	for i in range(len(Gen0)):
 		print Gen0.getProb(i)
 	print "----------"
