@@ -469,7 +469,7 @@ Generation.
 			for i in clones2mutate:
 				self[i].mutateAnyN(NGenesTot)
 	
-	def mutateCousins(self):
+	def mutateCousins(self,Perturb=False):
 		"""
 			depends on self.MutateGeneProb
 			depends on self.GeneCousins
@@ -490,7 +490,11 @@ Generation.
 			NGenesTot = int(len(self[0]) * self.MutateGeneProb)
 			print "* Mutating ", NGenesTot, " genes"
 			for i in cousins2mutate:
-				self[i].mutateAnyN(NGenesTot)
+				if Perturb==True:
+					self[i].mutateAnyN(NGenesTot)
+				else:
+					self[i].perturbAll()
+	
 
 	def mutateRandom(self):
 		"""

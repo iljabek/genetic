@@ -13,17 +13,21 @@ def gaussian(x, mu, sig):
 	gaus /= ( 2. * np.pi * np.sqrt(float(sig)) )
 	return gaus 
 
-class GENBeam(GEN.GEN):
-	"Custom Generation Class: overload Fitness evaluation"
-	def evalFit(self,ind):
-		fit = 1.
-		fit *= gaussian(ind.getall()[0],0.4,0.02)  #Pow
-		fit *= gaussian(ind.getall()[1],0.4,0.02)  #Pow
-		fit *= gaussian(ind.getall()[2],0.4,0.02)  #Pow
-		fit *= gaussian(ind.getall()[3],0.4,0.02)  #Pow
-		fit *= gaussian(ind.getall()[4],0.4,0.02)  #Pow
-		fit *= gaussian(ind.getall()[5],0.4,0.02)  #Pow
-		ind.fitness = fit
+#class GENBeam(GEN.GEN):
+#	"Custom Generation Class: overload Fitness evaluation"
+def evalFitOverload(ind):
+	"""
+		Custom overloaded Fitness evaluation
+		takes one indi, returns fitness
+	"""
+	fit = 1.
+	fit *= gaussian(ind.getall()[0],0.3,0.03)  #Pow
+	fit *= gaussian(ind.getall()[1],0.3,0.03)  #Pow
+	fit *= gaussian(ind.getall()[2],0.3,0.03)  #Pow
+	fit *= gaussian(ind.getall()[3],0.3,0.03)  #Pow
+	fit *= gaussian(ind.getall()[4],0.3,0.03)  #Pow
+	fit *= gaussian(ind.getall()[5],0.3,0.03)  #Pow
+	ind.fitness = fit
 
 
 def getBeam():
@@ -48,12 +52,12 @@ def main(argv):
 	params.append(100)    #1  Gen size = indis in Gen
 	params.append(0.99)   #2  final max fitness
 	
-	params.append(0.5)    #3  ProbMutateGene
-	params.append(0.2)    #4  ProbMutateIndi
-	params.append(0.5)    #5  WinShareToReporduce
-	params.append(1)      #6  WinnersToProtect
-	params.append(1)      #7  WeightMode
-	params.append(1)      #8  GeneCousins
+	params.append(0.5)    #3  MutateGeneProb
+	params.append(0.2)    #4  MutateIndiProb
+	params.append(0.5)    #5  WinToReporduceFrac
+	params.append(0.015)    #6  ElitistFrac
+	params.append(0)    #7  WeightMode
+	params.append(0.33)    #8  GeneCousins
 
 	print params
 
@@ -65,10 +69,10 @@ def main(argv):
 #	print iGen
 	print "Unique Indis: ", iGen.getUniqueIndis() , 
 	print ", Unique Genes: ", iGen.getUniqueGenes()
-	iGen.ProbMutateGene = params[3]      #float 0..1
-	iGen.ProbMutateIndi = params[4]      #float 0..1
-	iGen.WinShareToReporduce = params[5] #float 0..1
-	iGen.WinnersToProtect = params[6]    #int 0..len(self)
+	iGen.MutateGeneProb = params[3]      #float 0..1
+	iGen.MutateIndiProb = params[4]      #float 0..1
+	iGen.WinToReporduceFrac = params[5] #float 0..1
+	iGen.ElitistFrac = params[6]    #int 0..len(self)
 	# Weights: 0=fitness, 1=uniform, 2=linear, (3=exp)
 	iGen.WeightMode = params[7] 
 	iGen.GeneCousins = params[8] 
@@ -84,8 +88,19 @@ def main(argv):
 			print "**********************************"
 			print "  Unique Individuals: ", iGen.getUniqueIndis(), " Unique Genes: ", iGen.getUniqueGenes()
 
+			print " Evaluate, sort"
+			iGen.evalFitAll()
+			iGen.sortFittest()
+
+			#iGen.updateMemory()
+			
+			
+			iGen.printChroms(10)
+			iGen.printFitness(10)
+#			iGen.show_SelectionProb()	
 			print " Selection, Reproduction"
-			iGen.Selection_RouletteWheel()
+#			iGen.Selection_RouletteWheel()
+			iGen.Selection_NFittest()
 
 			if iGen.getUniqueIndis() < len(iGen): 
 				print " Crossover, if not all the same"
@@ -94,21 +109,20 @@ def main(argv):
 				print "  Unique Individuals: ", iGen.getUniqueIndis(), " Unique Genes: ", iGen.getUniqueGenes()
 
 			print " Mutation"
+			
 			iGen.mutateClones()
 			print "  Unique Individuals: ", iGen.getUniqueIndis(), " Unique Genes: ", iGen.getUniqueGenes()
+
+#			iGen.mutateCousins()
+#			print "  Unique Individuals: ", iGen.getUniqueIndis(), " Unique Genes: ", iGen.getUniqueGenes()
+
 			iGen.mutateRandom()
 			print "  Unique Individuals: ", iGen.getUniqueIndis(), " Unique Genes: ", iGen.getUniqueGenes()
 
-			print " Evaluate, sort"
-			iGen.evalFitAll()
-			iGen.sortFittest()
+			iGen.perturbRandom()
+			print "  Unique Individuals: ", iGen.getUniqueIndis(), " Unique Genes: ", iGen.getUniqueGenes()
 
-			#iGen.updateMemory()
-			
 			iGen.levelUp()
-			
-			iGen.printChroms(10)
-			iGen.printFitness(10)
 			trials.append( iGen[0].mitosis() )
 #			open(evolpath+"/params.txt","a").write(" ".join(map(str,trials[t]))+"\n")
 #			GEN.writeStateToFile(iGen, evolpath, joined=False,gziped=False)
@@ -133,7 +147,9 @@ def initBeam(evolpath,GenSize=100):
 		os.makedirs(evolpath)
 	
 	proto = GEN.indi( getBeam() ) # Proto-Individual 
-	Gen0 = GENBeam.clone(proto,GenSize) # create inital empty population with size GenSize
+#	Gen0 = GENBeam.clone(proto,GenSize) # create inital empty population with size GenSize
+	Gen0 = GEN.GEN.clone(proto,GenSize) # create inital empty population with size GenSize
+	Gen0.evalFit = evalFitOverload
 	Gen0.mutateAll() # shuffle up for all individuals all genes
 	Gen0.evalFitAll() # evaluate all fitnesses
 	Gen0.sortFittest() # sort by fitness
